@@ -34,14 +34,13 @@
     "model",
     "context-window"
   ],
-  "homepage": "https://github.com/kenbanks-peng/DevBox/tree/main/tools/ai/util/pi/pi-bar#readme",
+  "homepage": "https://github.com/kenbanks-peng/pi-bar#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kenbanks-peng/DevBox.git",
-    "directory": "tools/ai/util/pi/pi-bar"
+    "url": "git+https://github.com/kenbanks-peng/pi-bar.git"
   },
   "bugs": {
-    "url": "https://github.com/kenbanks-peng/DevBox/issues"
+    "url": "https://github.com/kenbanks-peng/pi-bar/issues"
   },
   "license": "MIT",
   "publishConfig": {
