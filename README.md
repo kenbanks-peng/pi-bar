@@ -2,6 +2,8 @@
 
 Configurable [pi](https://pi.dev) status bar extension.
 
+![pi-bar screenshot](./screenshot.png)
+
 ## Install
 
 ```sh
@@ -83,11 +85,3 @@ Segment types:
 - `status` — pi extension status, like MCP or LSP
 - `activity` — tool activity / working spinner
 
-## Development
-
-```sh
-npm run deploy
-```
-
-Installs the local extension and copies `config.toml` to
-`~/.pi/pi-bar/config.toml`.
