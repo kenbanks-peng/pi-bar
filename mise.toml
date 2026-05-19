@@ -1,0 +1,7 @@
+[tasks.deploy]
+description = "Install pi-bar status bar extension into pi global settings"
+run = """
+pi install ./index.ts
+mkdir -p "${HOME}/.pi/pi-bar"
+cp config.toml "${HOME}/.pi/pi-bar/config.toml"
+"""

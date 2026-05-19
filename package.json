@@ -1,0 +1,63 @@
+{
+  "name": "@npm-ken/pi-bar",
+  "version": "0.1.6",
+  "description": "Configurable status bar extension for the pi coding agent.",
+  "private": false,
+  "type": "module",
+  "module": "index.ts",
+  "main": "index.ts",
+  "files": [
+    "index.ts",
+    "src",
+    "config.toml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "deploy": "pi install ./index.ts && mkdir -p \"${HOME}/.pi/pi-bar\" && cp config.toml \"${HOME}/.pi/pi-bar/config.toml\" && echo \"Installed pi-bar config to ${HOME}/.pi/pi-bar/config.toml\"",
+    "typecheck": "tsc --noEmit",
+    "prepack": "npm run typecheck"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi-coding-agent",
+    "coding-agent",
+    "extension",
+    "pi",
+    "pi-bar",
+    "statusbar",
+    "status-bar",
+    "statusline",
+    "footer",
+    "footer-bar",
+    "model",
+    "context-window"
+  ],
+  "homepage": "https://github.com/kenbanks-peng/DevBox/tree/main/tools/ai/util/pi/pi-bar#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kenbanks-peng/DevBox.git",
+    "directory": "tools/ai/util/pi/pi-bar"
+  },
+  "bugs": {
+    "url": "https://github.com/kenbanks-peng/DevBox/issues"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.6.0"
+  }
+}
