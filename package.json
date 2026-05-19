@@ -11,7 +11,8 @@
     "src",
     "config.toml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "screenshot.png"
   ],
   "scripts": {
     "deploy": "pi install ./index.ts && mkdir -p \"${HOME}/.pi/pi-bar\" && cp config.toml \"${HOME}/.pi/pi-bar/config.toml\" && echo \"Installed pi-bar config to ${HOME}/.pi/pi-bar/config.toml\"",
@@ -49,7 +50,8 @@
   "pi": {
     "extensions": [
       "./index.ts"
-    ]
+    ],
+    "image": "https://raw.githubusercontent.com/kenbanks-peng/pi-bar/main/screenshot.png"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
