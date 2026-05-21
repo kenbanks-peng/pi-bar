@@ -85,3 +85,5 @@ Segment types:
 - `status` — pi extension status, like MCP or LSP
 - `activity` — tool activity / working spinner
 
+Status segments can set `ignore = ["regex"]` to skip matching status text. This is useful on `key = "*"` catch-all segments when a known status should not be rendered.
+

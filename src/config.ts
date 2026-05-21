@@ -72,6 +72,7 @@ export interface StatusbarSegmentConfig {
   min_duration_ms?: number;
   min_width?: number;
   key?: string;
+  ignore?: string[];
 }
 
 interface StatusbarConfig {
@@ -185,6 +186,7 @@ function defaultConfig(): PiBarConfig {
           key: '*',
           eval: "` ${state.status?.text ?? ''} `",
           fg: 'text_fg',
+          ignore: ['^Codex adapter\\b'],
           states: [{ name: 'default', bg: 'warn' }],
         },
         { type: 'activity', ...DEFAULT_ACTIVITY_FIELD },
@@ -512,6 +514,14 @@ function assignStatusbarSegmentValue(
       throw new Error('Status bar segment sources must be an activity source array');
     }
     segment.sources = value;
+    return;
+  }
+
+  if (key === 'ignore') {
+    if (!Array.isArray(value) || !value.every((item) => typeof item === 'string')) {
+      throw new Error('Status bar segment ignore must be a string array');
+    }
+    segment.ignore = value;
     return;
   }
 

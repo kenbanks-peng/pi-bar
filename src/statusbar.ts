@@ -382,6 +382,7 @@ function renderSingleStatusSegment(
   renderState: StatusbarRenderState
 ): string {
   const normalized = normalizeStatus(statusText);
+  if (isIgnoredStatus(segment, normalized)) return '';
   const statusStates = (segment.states ?? []).filter(isStatusStateConfig);
   const state = statusStates.find(
     (candidate) => candidate.match && statusMatches(candidate.match, normalized)
@@ -415,6 +416,10 @@ function renderConfiguredSegment(
 
 function statusMatches(pattern: string, status: string): boolean {
   return new RegExp(pattern, 'i').test(status);
+}
+
+function isIgnoredStatus(segment: StatusbarSegmentConfig, status: string): boolean {
+  return segment.ignore?.some((pattern) => statusMatches(pattern, status)) ?? false;
 }
 
 function formatStatusSegmentText(
