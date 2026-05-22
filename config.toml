@@ -128,8 +128,8 @@ bg = "activity_bg"
 min_width = 11
 min_duration_ms = 1000
 sources = ["tools", "streaming"]
-eval = "`${activity.spinner} ${activity.value}`"
-values = { tools = "{tools}", streaming = "working" }
+eval = "`${activity.spinner} ${activity.source === 'tools' ? activity.tools : activity.value}`"
+values = { streaming = "working" }
 spinner = { frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"], interval_ms = 100 }
 collapse_order = 5
 collapsed_eval = "activity.spinner"

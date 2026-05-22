@@ -1,6 +1,6 @@
 {
 	"name": "@npm-ken/pi-bar",
-	"version": "0.1.12",
+	"version": "0.1.13",
 	"description": "Configurable status bar extension for the pi coding agent.",
 	"private": false,
 	"type": "module",
