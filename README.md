@@ -20,14 +20,7 @@ Create this file and edit it:
 ~/.pi/pi-bar/config.toml
 ```
 
-To start from the default config, copy `config.toml` from this repository or
-from the installed npm package:
-
-```sh
-mkdir -p ~/.pi/pi-bar
-cp config.toml ~/.pi/pi-bar/config.toml
-$EDITOR ~/.pi/pi-bar/config.toml
-```
+To start from the default config, copy `config.toml` from this repository or from the installed npm package and paste it to ~/.pi/pi-bar/config.toml
 
 ## Common edits
 
@@ -86,4 +79,46 @@ Segment types:
 - `activity` — tool activity / working spinner
 
 Status segments can set `ignore = ["regex"]` to skip matching status text. This is useful on `key = "*"` catch-all segments when a known status should not be rendered.
+
+### Adaptive / Responsive Collapsing
+
+pi-bar supports optional configuration attributes to gracefully scale down the status bar on constrained terminal widths instead of truncating abruptly:
+
+- `priority`: integer (higher priority = kept longer; default is `5`).
+- `collapsed_eval`: alternative JS expression evaluated when the segment is collapsed.
+- `hide_if_collapsed`: boolean indicating if the segment should be hidden entirely when collapsed.
+
+#### Example Config
+
+```toml
+# A high-priority context utilization meter that collapses to a shorter format
+[[statusbar.segments]]
+type = "meter"
+value_eval = "ctx.getContextUsage()?.percent ?? 0"
+eval = "`${Math.round(value)}% of ${humanReadable(model?.contextWindow)}`"
+fg = "text_fg"
+priority = 4
+collapsed_eval = "`${Math.round(value)}%`"
+
+# A medium-priority thinking indicator that hides entirely when space is limited
+[[statusbar.segments]]
+type = "value"
+eval = "pi.getThinkingLevel()"
+show_if = "model?.reasoning"
+fg = "text_fg"
+bg = "thinking_bg"
+priority = 2
+hide_if_collapsed = true
+
+# A low-priority active tool spinner that collapses to just the spinner glyph
+[[statusbar.segments]]
+type = "activity"
+fg = "activity_fg"
+bg = "activity_bg"
+min_width = 11
+eval = "`${activity.spinner} ${activity.value}`"
+collapsed_eval = "activity.spinner"
+priority = 5
+```
+
 

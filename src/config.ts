@@ -32,10 +32,8 @@ const STATUSBAR_SEGMENT_STRING_KEYS = new Set<string>([
   'value_eval',
   'empty_text',
   'show_if',
-  'template',
   'key',
   'collapsed_eval',
-  'collapsed_template',
 ]);
 
 const STATUSBAR_SEGMENT_NUMBER_KEYS = new Set<string>([
@@ -72,7 +70,6 @@ export interface StatusbarSegmentConfig {
   states?: Array<StatusStateConfig | MeterStateConfig>;
   empty_text?: string;
   show_if?: string;
-  template?: string;
   values?: Partial<Record<ActivitySource, string>>;
   sources?: ActivitySource[];
   spinner?: ActivitySpinnerConfig;
@@ -82,7 +79,6 @@ export interface StatusbarSegmentConfig {
   ignore?: string[];
   priority?: number;
   collapsed_eval?: string;
-  collapsed_template?: string;
   hide_if_collapsed?: boolean;
   isCollapsed?: boolean;
 }
@@ -111,7 +107,6 @@ export const DEFAULT_ACTIVITY_FIELD: Required<
     StatusbarSegmentConfig,
     | 'fg'
     | 'bg'
-    | 'template'
     | 'values'
     | 'sources'
     | 'spinner'
@@ -121,8 +116,7 @@ export const DEFAULT_ACTIVITY_FIELD: Required<
 > = {
   fg: 'activity_fg',
   bg: 'activity_bg',
-  template: '{spinner} {value}',
-  values: { tools: '{tools}', streaming: 'working' },
+  values: { streaming: 'working' },
   sources: ['tools', 'streaming'],
   spinner: {
     frames: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'],
@@ -218,7 +212,8 @@ function defaultConfig(): PiBarConfig {
           type: 'activity',
           ...DEFAULT_ACTIVITY_FIELD,
           priority: 5,
-          collapsed_template: '{spinner}',
+          eval: '`${activity.spinner} ${activity.value}`',
+          collapsed_eval: 'activity.spinner',
         },
       ],
     },
@@ -452,10 +447,8 @@ function setStatusBarSegmentString(
     case 'value_eval':
     case 'empty_text':
     case 'show_if':
-    case 'template':
     case 'key':
     case 'collapsed_eval':
-    case 'collapsed_template':
       segment[key] = value;
       return;
     default:

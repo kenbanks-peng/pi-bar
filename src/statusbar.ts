@@ -23,10 +23,6 @@ export interface StatusbarRenderState {
   status?: Record<string, unknown>;
 }
 
-interface TemplateContext {
-  [key: string]: string | number | boolean | readonly string[] | undefined;
-}
-
 /** Build the full status bar line from the ordered [[statusbar.segments]] config, with optional responsive collapsing. */
 export function buildStatusbarSegments(
   ctx: ExtensionContext,
@@ -191,10 +187,6 @@ function renderStatusbarSegment(
     if (segment.collapsed_eval !== undefined) {
       activeSegment.eval = segment.collapsed_eval;
     }
-    if (segment.collapsed_template !== undefined) {
-      activeSegment.template = segment.collapsed_template;
-      delete activeSegment.eval;
-    }
   }
 
   switch (activeSegment.type) {
@@ -240,7 +232,7 @@ interface StatusbarExpressionContext {
   pi: ExtensionAPI;
   state: StatusbarRenderState;
   value?: number;
-  activity?: TemplateContext & { value?: string };
+  activity?: Record<string, string | boolean | undefined>;
 }
 
 function shouldShowSegment(
@@ -312,7 +304,7 @@ function evaluateStatusbarExpression(
     lspTotalErrors: () => number,
     lspTotalWarnings: () => number,
     value: number | undefined,
-    activity: (TemplateContext & { value?: string }) | undefined
+    activity: Record<string, string | boolean | undefined> | undefined
   ) => unknown;
 
   return fn(
@@ -618,15 +610,17 @@ function renderActivitySegment(
   const spinnerFrames = segment.spinner?.frames ?? DEFAULT_ACTIVITY_FIELD.spinner.frames;
   const spinner = spinnerFrames[spinnerFrame] ?? '';
   const tools = displayedTools.join(', ');
-  const valueTemplate =
-    segment.values?.[source] ?? DEFAULT_ACTIVITY_FIELD.values[source] ?? '';
-  const templateContext = {
+  const value =
+    segment.values?.[source] ??
+    DEFAULT_ACTIVITY_FIELD.values[source] ??
+    (source === 'tools' ? tools : '');
+  const activity = {
     source,
     spinner,
     tools,
     streaming: displayedStreaming,
+    value,
   };
-  const value = renderTemplate(valueTemplate, templateContext);
   const expression = segment.eval?.trim();
   const text = expression
     ? stringifySegmentValue(
@@ -635,14 +629,11 @@ function renderActivitySegment(
           ctx,
           pi,
           state,
-          activity: { ...templateContext, value },
+          activity,
         }),
         segment
       )
-    : renderTemplate(segment.template ?? DEFAULT_ACTIVITY_FIELD.template, {
-        ...templateContext,
-        value,
-      });
+    : `${spinner} ${value}`;
 
   const minWidth = segment.isCollapsed ? undefined : (segment.min_width ?? DEFAULT_ACTIVITY_FIELD.min_width);
   return renderTextSegment(
@@ -654,14 +645,6 @@ function renderActivitySegment(
     },
     text
   );
-}
-
-function renderTemplate(template: string, context: TemplateContext): string {
-  return template.replace(/\{([A-Za-z0-9_]+)\}/g, (_match, key: string) => {
-    const value = context[key];
-    if (Array.isArray(value)) return value.join(', ');
-    return value === undefined ? '' : String(value);
-  });
 }
 
 export function firstActivityField(): StatusbarSegmentConfig {
