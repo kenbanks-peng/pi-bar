@@ -46,18 +46,24 @@ export function buildStatusbarSegments(
       .join('');
   }
 
-  // 2. Pre-render all active segments in Full and Collapsed states
+  // 2. Pre-render all active segments in Full and Collapsed states.
+  // A segment participates in responsive collapse only when it declares either
+  // collapse_order or collapsed_eval. A collapsed_eval without collapse_order
+  // defaults to order 1; a collapse_order without collapsed_eval collapses to
+  // an empty render.
   const renderedList = activeSegments.map((segment, index) => {
     const fullRender = safeRenderStatusbarSegment(segment, ctx, pi, state, explicitlyConfiguredStatusKeys, false);
     const collapsedRender = safeRenderStatusbarSegment(segment, ctx, pi, state, explicitlyConfiguredStatusKeys, true);
 
     const fullLen = visualLength(fullRender);
     const collapsedLen = visualLength(collapsedRender);
+    const collapsible = isCollapsibleSegment(segment);
 
     return {
       segment,
       index,
-      priority: segment.priority ?? 5,
+      collapsible,
+      collapseOrder: collapsible ? (segment.collapse_order ?? 1) : Infinity,
       fullRender,
       fullLen,
       collapsedRender,
@@ -77,14 +83,14 @@ export function buildStatusbarSegments(
   // 5. Degrade systematically until it fits (or we cannot degrade any further)
   while (currentTotalLen > width) {
     let targetIndex = -1;
-    let targetPriority = Infinity;
+    let targetCollapseOrder = Infinity;
 
-    // Find the lowest priority segment that is currently 'Full' and collapsible
+    // Find the earliest collapse-order segment that is currently 'Full' and collapsible.
     for (let i = renderedList.length - 1; i >= 0; i--) {
       const item = renderedList[i]!;
-      if (item.currentState === 'Full' && item.collapsedLen < item.fullLen) {
-        if (item.priority < targetPriority) {
-          targetPriority = item.priority;
+      if (item.collapsible && item.currentState === 'Full' && item.collapsedLen < item.fullLen) {
+        if (item.collapseOrder < targetCollapseOrder) {
+          targetCollapseOrder = item.collapseOrder;
           targetIndex = i;
         }
       }
@@ -98,16 +104,17 @@ export function buildStatusbarSegments(
       continue;
     }
 
-    // If no more Full -> Collapsed transitions are possible, we must hide something.
-    // Find the lowest priority segment that is not yet 'Hidden' and hide it.
+    // If no more Full -> Collapsed transitions are possible, hide the earliest
+    // eligible segment that still has a visible render.
     targetIndex = -1;
-    targetPriority = Infinity;
+    targetCollapseOrder = Infinity;
 
     for (let i = renderedList.length - 1; i >= 0; i--) {
       const item = renderedList[i]!;
-      if (item.currentState !== 'Hidden') {
-        if (item.priority < targetPriority) {
-          targetPriority = item.priority;
+      const currentLen = item.currentState === 'Full' ? item.fullLen : item.collapsedLen;
+      if (item.collapsible && item.currentState !== 'Hidden' && currentLen > 0) {
+        if (item.collapseOrder < targetCollapseOrder) {
+          targetCollapseOrder = item.collapseOrder;
           targetIndex = i;
         }
       }
@@ -133,6 +140,14 @@ export function buildStatusbarSegments(
       return '';
     })
     .join('');
+}
+
+function hasCollapsedEval(segment: StatusbarSegmentConfig): boolean {
+  return typeof segment.collapsed_eval === 'string' && segment.collapsed_eval.trim() !== '';
+}
+
+function isCollapsibleSegment(segment: StatusbarSegmentConfig): boolean {
+  return segment.collapse_order !== undefined || hasCollapsedEval(segment);
 }
 
 
@@ -177,13 +192,12 @@ function renderStatusbarSegment(
 ): string {
   if (!shouldShowSegment(segment, ctx, pi, state)) return '';
 
-  if (isCollapsed && segment.hide_if_collapsed) {
-    return '';
-  }
-
   // Create a copy of the segment with collapsed properties overriding normal ones
   const activeSegment = { ...segment, isCollapsed };
   if (isCollapsed) {
+    if (!hasCollapsedEval(segment)) {
+      return '';
+    }
     if (segment.collapsed_eval !== undefined) {
       activeSegment.eval = segment.collapsed_eval;
     }

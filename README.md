@@ -84,33 +84,41 @@ Status segments can set `ignore = ["regex"]` to skip matching status text. This 
 
 pi-bar supports optional configuration attributes to gracefully scale down the status bar on constrained terminal widths instead of truncating abruptly:
 
-- `priority`: integer (higher priority = kept longer; default is `5`).
-- `collapsed_eval`: alternative JS expression evaluated when the segment is collapsed.
-- `hide_if_collapsed`: boolean indicating if the segment should be hidden entirely when collapsed.
+- A segment is eligible for collapse when it sets either `collapse_order` or `collapsed_eval`.
+- `collapse_order`: integer group number for responsive collapse order. `1` is the first group collapsed; higher groups are kept longer.
+- `collapsed_eval`: alternative JS expression evaluated when the segment is collapsed. When `collapsed_eval` is set without `collapse_order`, the segment collapses with order `1`.
+- If `collapse_order` is set without `collapsed_eval`, the segment is hidden when its collapse order comes up.
 
 #### Example Config
 
 ```toml
-# A high-priority context utilization meter that collapses to a shorter format
+# A later-collapsing context utilization meter that collapses to a shorter format
 [[statusbar.segments]]
 type = "meter"
 value_eval = "ctx.getContextUsage()?.percent ?? 0"
 eval = "`${Math.round(value)}% of ${humanReadable(model?.contextWindow)}`"
 fg = "text_fg"
-priority = 4
+collapse_order = 4
 collapsed_eval = "`${Math.round(value)}%`"
 
-# A medium-priority thinking indicator that hides entirely when space is limited
+# An early-collapsing thinking indicator that hides entirely when space is limited
 [[statusbar.segments]]
 type = "value"
 eval = "pi.getThinkingLevel()"
 show_if = "model?.reasoning"
 fg = "text_fg"
 bg = "thinking_bg"
-priority = 2
-hide_if_collapsed = true
+collapse_order = 2
 
-# A low-priority active tool spinner that collapses to just the spinner glyph
+# A first-collapsing status segment can omit collapse_order when collapsed_eval is present
+[[statusbar.segments]]
+type = "status"
+key = "whatsapp"
+eval = "'  '"
+fg = "text_fg"
+collapsed_eval = "' WA '"
+
+# A last-collapsing active tool spinner that collapses to just the spinner glyph
 [[statusbar.segments]]
 type = "activity"
 fg = "activity_fg"
@@ -118,7 +126,7 @@ bg = "activity_bg"
 min_width = 11
 eval = "`${activity.spinner} ${activity.value}`"
 collapsed_eval = "activity.spinner"
-priority = 5
+collapse_order = 5
 ```
 
 
