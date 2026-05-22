@@ -32,11 +32,16 @@ const STATUSBAR_SEGMENT_STRING_KEYS = new Set<string>([
   'value_eval',
   'empty_text',
   'show_if',
-  'template',
   'key',
+  'collapsed_eval',
 ]);
 
-const STATUSBAR_SEGMENT_NUMBER_KEYS = new Set<string>(['min_duration_ms', 'min_width']);
+const STATUSBAR_SEGMENT_NUMBER_KEYS = new Set<string>([
+  'min_duration_ms',
+  'min_width',
+  'collapse_order',
+]);
+
 
 type StatusbarSegmentType = 'value' | 'meter' | 'status' | 'activity';
 
@@ -65,7 +70,6 @@ export interface StatusbarSegmentConfig {
   states?: Array<StatusStateConfig | MeterStateConfig>;
   empty_text?: string;
   show_if?: string;
-  template?: string;
   values?: Partial<Record<ActivitySource, string>>;
   sources?: ActivitySource[];
   spinner?: ActivitySpinnerConfig;
@@ -73,7 +77,11 @@ export interface StatusbarSegmentConfig {
   min_width?: number;
   key?: string;
   ignore?: string[];
+  collapse_order?: number;
+  collapsed_eval?: string;
+  isCollapsed?: boolean;
 }
+
 
 interface StatusbarConfig {
   separators: SegmentSeparators;
@@ -98,7 +106,6 @@ export const DEFAULT_ACTIVITY_FIELD: Required<
     StatusbarSegmentConfig,
     | 'fg'
     | 'bg'
-    | 'template'
     | 'values'
     | 'sources'
     | 'spinner'
@@ -108,8 +115,7 @@ export const DEFAULT_ACTIVITY_FIELD: Required<
 > = {
   fg: 'activity_fg',
   bg: 'activity_bg',
-  template: '{spinner} {value}',
-  values: { tools: '{tools}', streaming: 'working' },
+  values: { streaming: 'working' },
   sources: ['tools', 'streaming'],
   spinner: {
     frames: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'],
@@ -145,6 +151,8 @@ function defaultConfig(): PiBarConfig {
           fg: 'text_fg',
           bg: 'model_bg',
           empty_text: 'no model',
+          collapse_order: 3,
+          collapsed_eval: "model?.id ? (model.id.includes('/') ? model.id.split('/').pop() : model.id) : ''",
         },
         {
           type: 'value',
@@ -152,6 +160,7 @@ function defaultConfig(): PiBarConfig {
           fg: 'text_fg',
           bg: 'thinking_bg',
           show_if: 'model?.reasoning',
+          collapse_order: 2,
         },
         {
           type: 'meter',
@@ -166,6 +175,8 @@ function defaultConfig(): PiBarConfig {
             { gte: 50, bg: 'warn' },
             { gte: 0, bg: 'ok' },
           ],
+          collapse_order: 4,
+          collapsed_eval: "Math.round(value) + '%'",
         },
         {
           type: 'status',
@@ -173,6 +184,7 @@ function defaultConfig(): PiBarConfig {
           eval: "'  '",
           fg: 'text_fg',
           states: [{ name: 'default', bg: 'warn' }],
+          collapse_order: 1,
         },
         {
           type: 'status',
@@ -180,6 +192,7 @@ function defaultConfig(): PiBarConfig {
           eval: "' LSP '",
           fg: 'text_fg',
           states: [{ name: 'default', bg: 'warn' }],
+          collapse_order: 2,
         },
         {
           type: 'status',
@@ -188,8 +201,15 @@ function defaultConfig(): PiBarConfig {
           fg: 'text_fg',
           ignore: ['^Codex adapter\\b'],
           states: [{ name: 'default', bg: 'warn' }],
+          collapse_order: 1,
         },
-        { type: 'activity', ...DEFAULT_ACTIVITY_FIELD },
+        {
+          type: 'activity',
+          ...DEFAULT_ACTIVITY_FIELD,
+          collapse_order: 5,
+          eval: '`${activity.spinner} ${activity.value}`',
+          collapsed_eval: 'activity.spinner',
+        },
       ],
     },
   };
@@ -422,8 +442,8 @@ function setStatusBarSegmentString(
     case 'value_eval':
     case 'empty_text':
     case 'show_if':
-    case 'template':
     case 'key':
+    case 'collapsed_eval':
       segment[key] = value;
       return;
     default:
@@ -439,6 +459,7 @@ function setStatusBarSegmentNumber(
   switch (key) {
     case 'min_duration_ms':
     case 'min_width':
+    case 'collapse_order':
       segment[key] = value;
       return;
     default:

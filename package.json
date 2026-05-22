@@ -1,64 +1,64 @@
 {
-  "name": "@npm-ken/pi-bar",
-  "version": "0.1.10",
-  "description": "Configurable status bar extension for the pi coding agent.",
-  "private": false,
-  "type": "module",
-  "module": "index.ts",
-  "main": "index.ts",
-  "files": [
-    "index.ts",
-    "src",
-    "config.toml",
-    "README.md",
-    "LICENSE",
-    "screenshot.png"
-  ],
-  "scripts": {
-    "deploy": "pi install ./index.ts && mkdir -p \"${HOME}/.pi/pi-bar\" && cp config.toml \"${HOME}/.pi/pi-bar/config.toml\" && echo \"Installed pi-bar config to ${HOME}/.pi/pi-bar/config.toml\"",
-    "typecheck": "tsc --noEmit",
-    "prepack": "npm run typecheck"
-  },
-  "keywords": [
-    "pi-package",
-    "pi-extension",
-    "pi-coding-agent",
-    "coding-agent",
-    "extension",
-    "pi",
-    "pi-bar",
-    "statusbar",
-    "status-bar",
-    "statusline",
-    "footer",
-    "footer-bar",
-    "model",
-    "context-window"
-  ],
-  "homepage": "https://github.com/kenbanks-peng/pi-bar#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/kenbanks-peng/pi-bar.git"
-  },
-  "bugs": {
-    "url": "https://github.com/kenbanks-peng/pi-bar/issues"
-  },
-  "license": "MIT",
-  "publishConfig": {
-    "access": "public"
-  },
-  "pi": {
-    "extensions": [
-      "./index.ts"
-    ],
-    "image": "https://raw.githubusercontent.com/kenbanks-peng/pi-bar/main/screenshot.png"
-  },
-  "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*",
-    "@earendil-works/pi-tui": "*"
-  },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "typescript": "^5.6.0"
-  }
+	"name": "@npm-ken/pi-bar",
+	"version": "0.1.12",
+	"description": "Configurable status bar extension for the pi coding agent.",
+	"private": false,
+	"type": "module",
+	"module": "index.ts",
+	"main": "index.ts",
+	"files": [
+		"index.ts",
+		"src",
+		"config.toml",
+		"README.md",
+		"LICENSE",
+		"screenshot.png"
+	],
+	"scripts": {
+		"deploy": "pi install ./index.ts && mkdir -p \"${HOME}/.pi/pi-bar\" && cp config.toml \"${HOME}/.pi/pi-bar/config.toml\" && echo \"Installed pi-bar config to ${HOME}/.pi/pi-bar/config.toml\"",
+		"typecheck": "tsc --noEmit",
+		"prepack": "npm run typecheck"
+	},
+	"keywords": [
+		"pi-package",
+		"pi-extension",
+		"pi-coding-agent",
+		"coding-agent",
+		"extension",
+		"pi",
+		"pi-bar",
+		"statusbar",
+		"status-bar",
+		"statusline",
+		"footer",
+		"footer-bar",
+		"model",
+		"context-window"
+	],
+	"homepage": "https://github.com/kenbanks-peng/pi-bar#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kenbanks-peng/pi-bar.git"
+	},
+	"bugs": {
+		"url": "https://github.com/kenbanks-peng/pi-bar/issues"
+	},
+	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
+	},
+	"pi": {
+		"extensions": [
+			"./index.ts"
+		],
+		"image": "https://raw.githubusercontent.com/kenbanks-peng/pi-bar/main/screenshot.png"
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*"
+	},
+	"devDependencies": {
+		"@types/bun": "latest",
+		"typescript": "^5.6.0"
+	}
 }

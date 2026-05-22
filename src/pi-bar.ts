@@ -154,12 +154,17 @@ export default function (pi: ExtensionAPI) {
         invalidate() {},
 
         render(width: number): string[] {
-          const segments = buildStatusbarSegments(ctx, pi, {
-            spinnerFrame,
-            displayedTools,
-            displayedStreaming,
-            statuses: statusbarData.getExtensionStatuses(),
-          });
+          const segments = buildStatusbarSegments(
+            ctx,
+            pi,
+            {
+              spinnerFrame,
+              displayedTools,
+              displayedStreaming,
+              statuses: statusbarData.getExtensionStatuses(),
+            },
+            width
+          );
           return [truncateToWidth(segments, width), ''];
         },
       };

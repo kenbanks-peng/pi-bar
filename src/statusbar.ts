@@ -4,7 +4,7 @@
 
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 
-import { renderSegment } from './ansi.js';
+import { renderSegment, visualLength } from './ansi.js';
 import {
   DEFAULT_ACTIVITY_FIELD,
   config,
@@ -23,23 +23,133 @@ export interface StatusbarRenderState {
   status?: Record<string, unknown>;
 }
 
-interface TemplateContext {
-  [key: string]: string | number | boolean | readonly string[] | undefined;
-}
-
-/** Build the full status bar line from the ordered [[statusbar.segments]] config. */
+/** Build the full status bar line from the ordered [[statusbar.segments]] config, with optional responsive collapsing. */
 export function buildStatusbarSegments(
   ctx: ExtensionContext,
   pi: ExtensionAPI,
-  state: StatusbarRenderState
+  state: StatusbarRenderState,
+  width?: number
 ): string {
   const explicitlyConfiguredStatusKeys = configuredStatusKeys();
-  return config.statusbar.segments
-    .map((segment) =>
-      safeRenderStatusbarSegment(segment, ctx, pi, state, explicitlyConfiguredStatusKeys)
-    )
+  
+  // 1. Get all segments that should be shown under normal conditions
+  const activeSegments = config.statusbar.segments.filter((segment) =>
+    shouldShowSegment(segment, ctx, pi, state)
+  );
+
+  // If no width constraint is specified, render everything fully
+  if (width === undefined) {
+    return activeSegments
+      .map((segment) =>
+        safeRenderStatusbarSegment(segment, ctx, pi, state, explicitlyConfiguredStatusKeys, false)
+      )
+      .join('');
+  }
+
+  // 2. Pre-render all active segments in Full and Collapsed states.
+  // A segment participates in responsive collapse only when it declares either
+  // collapse_order or collapsed_eval. A collapsed_eval without collapse_order
+  // defaults to order 1; a collapse_order without collapsed_eval collapses to
+  // an empty render.
+  const renderedList = activeSegments.map((segment, index) => {
+    const fullRender = safeRenderStatusbarSegment(segment, ctx, pi, state, explicitlyConfiguredStatusKeys, false);
+    const collapsedRender = safeRenderStatusbarSegment(segment, ctx, pi, state, explicitlyConfiguredStatusKeys, true);
+
+    const fullLen = visualLength(fullRender);
+    const collapsedLen = visualLength(collapsedRender);
+    const collapsible = isCollapsibleSegment(segment);
+
+    return {
+      segment,
+      index,
+      collapsible,
+      collapseOrder: collapsible ? (segment.collapse_order ?? 1) : Infinity,
+      fullRender,
+      fullLen,
+      collapsedRender,
+      collapsedLen,
+      currentState: 'Full' as 'Full' | 'Collapsed' | 'Hidden',
+    };
+  });
+
+  // 3. Compute initial total width
+  let currentTotalLen = renderedList.reduce((sum, item) => sum + item.fullLen, 0);
+
+  // 4. If it fits, return the full renders
+  if (currentTotalLen <= width) {
+    return renderedList.map((item) => item.fullRender).join('');
+  }
+
+  // 5. Degrade systematically until it fits (or we cannot degrade any further)
+  while (currentTotalLen > width) {
+    let targetIndex = -1;
+    let targetCollapseOrder = Infinity;
+
+    // Find the earliest collapse-order segment that is currently 'Full' and collapsible.
+    for (let i = renderedList.length - 1; i >= 0; i--) {
+      const item = renderedList[i]!;
+      if (item.collapsible && item.currentState === 'Full' && item.collapsedLen < item.fullLen) {
+        if (item.collapseOrder < targetCollapseOrder) {
+          targetCollapseOrder = item.collapseOrder;
+          targetIndex = i;
+        }
+      }
+    }
+
+    if (targetIndex !== -1) {
+      // Transition Full -> Collapsed
+      const item = renderedList[targetIndex]!;
+      item.currentState = 'Collapsed';
+      currentTotalLen -= (item.fullLen - item.collapsedLen);
+      continue;
+    }
+
+    // If no more Full -> Collapsed transitions are possible, hide the earliest
+    // eligible segment that still has a visible render.
+    targetIndex = -1;
+    targetCollapseOrder = Infinity;
+
+    for (let i = renderedList.length - 1; i >= 0; i--) {
+      const item = renderedList[i]!;
+      const currentLen = item.currentState === 'Full' ? item.fullLen : item.collapsedLen;
+      if (item.collapsible && item.currentState !== 'Hidden' && currentLen > 0) {
+        if (item.collapseOrder < targetCollapseOrder) {
+          targetCollapseOrder = item.collapseOrder;
+          targetIndex = i;
+        }
+      }
+    }
+
+    if (targetIndex !== -1) {
+      // Transition to Hidden
+      const item = renderedList[targetIndex]!;
+      const currentLen = item.currentState === 'Full' ? item.fullLen : item.collapsedLen;
+      item.currentState = 'Hidden';
+      currentTotalLen -= currentLen;
+    } else {
+      // Nothing left to degrade!
+      break;
+    }
+  }
+
+  // 6. Join and return the final segments
+  return renderedList
+    .map((item) => {
+      if (item.currentState === 'Full') return item.fullRender;
+      if (item.currentState === 'Collapsed') return item.collapsedRender;
+      return '';
+    })
     .join('');
 }
+
+function hasCollapsedEval(segment: StatusbarSegmentConfig): boolean {
+  return typeof segment.collapsed_eval === 'string' && segment.collapsed_eval.trim() !== '';
+}
+
+function isCollapsibleSegment(segment: StatusbarSegmentConfig): boolean {
+  return segment.collapse_order !== undefined || hasCollapsedEval(segment);
+}
+
 
 function configuredStatusKeys(): ReadonlySet<string> {
   return new Set(
@@ -55,7 +165,8 @@ function safeRenderStatusbarSegment(
   ctx: ExtensionContext,
   pi: ExtensionAPI,
   state: StatusbarRenderState,
-  explicitlyConfiguredStatusKeys: ReadonlySet<string>
+  explicitlyConfiguredStatusKeys: ReadonlySet<string>,
+  isCollapsed = false
 ): string {
   try {
     return renderStatusbarSegment(
@@ -63,7 +174,8 @@ function safeRenderStatusbarSegment(
       ctx,
       pi,
       state,
-      explicitlyConfiguredStatusKeys
+      explicitlyConfiguredStatusKeys,
+      isCollapsed
     );
   } catch {
     return '';
@@ -75,18 +187,30 @@ function renderStatusbarSegment(
   ctx: ExtensionContext,
   pi: ExtensionAPI,
   state: StatusbarRenderState,
-  explicitlyConfiguredStatusKeys: ReadonlySet<string>
+  explicitlyConfiguredStatusKeys: ReadonlySet<string>,
+  isCollapsed = false
 ): string {
   if (!shouldShowSegment(segment, ctx, pi, state)) return '';
 
-  switch (segment.type) {
+  // Create a copy of the segment with collapsed properties overriding normal ones
+  const activeSegment = { ...segment, isCollapsed };
+  if (isCollapsed) {
+    if (!hasCollapsedEval(segment)) {
+      return '';
+    }
+    if (segment.collapsed_eval !== undefined) {
+      activeSegment.eval = segment.collapsed_eval;
+    }
+  }
+
+  switch (activeSegment.type) {
     case 'value':
-      return renderValueSegment(segment, ctx, pi, state);
+      return renderValueSegment(activeSegment, ctx, pi, state);
     case 'meter':
-      return renderMeterSegment(segment, ctx, pi, state);
+      return renderMeterSegment(activeSegment, ctx, pi, state);
     case 'status':
       return renderStatusSegment(
-        segment,
+        activeSegment,
         state.statuses,
         ctx,
         pi,
@@ -94,7 +218,7 @@ function renderStatusbarSegment(
         explicitlyConfiguredStatusKeys
       );
     case 'activity':
-      return renderActivitySegment(state, segment, ctx, pi);
+      return renderActivitySegment(state, activeSegment, ctx, pi);
   }
 }
 
@@ -105,7 +229,8 @@ function renderTextSegment(
   if (!text) return '';
   const fg = segment.fg ?? 'text';
   const bg = segment.bg;
-  const paddedText = padText(text, segment.min_width);
+  const minWidth = segment.isCollapsed ? undefined : segment.min_width;
+  const paddedText = padText(text, minWidth);
   if (!bg) return paddedText;
   return renderConfiguredSegment(color(bg, 'bg'), color(fg, 'fg'), ` ${paddedText} `);
 }
@@ -121,7 +246,7 @@ interface StatusbarExpressionContext {
   pi: ExtensionAPI;
   state: StatusbarRenderState;
   value?: number;
-  activity?: TemplateContext & { value?: string };
+  activity?: Record<string, string | boolean | undefined>;
 }
 
 function shouldShowSegment(
@@ -193,7 +318,7 @@ function evaluateStatusbarExpression(
     lspTotalErrors: () => number,
     lspTotalWarnings: () => number,
     value: number | undefined,
-    activity: (TemplateContext & { value?: string }) | undefined
+    activity: Record<string, string | boolean | undefined> | undefined
   ) => unknown;
 
   return fn(
@@ -433,9 +558,12 @@ function formatStatusSegmentText(
   const statusContext = parseStatusContext(status, segment.key);
   const displayConfig: StatusbarSegmentConfig = {
     ...segment,
-    eval: state?.eval ?? segment.eval,
+    eval: (segment.collapsed_eval !== undefined && segment.eval === segment.collapsed_eval)
+      ? segment.collapsed_eval
+      : (state?.eval ?? segment.eval),
   };
   const expression = displayConfig.eval?.trim();
+
 
   if (!expression) return ` ${status.trim()} `;
 
@@ -496,15 +624,17 @@ function renderActivitySegment(
   const spinnerFrames = segment.spinner?.frames ?? DEFAULT_ACTIVITY_FIELD.spinner.frames;
   const spinner = spinnerFrames[spinnerFrame] ?? '';
   const tools = displayedTools.join(', ');
-  const valueTemplate =
-    segment.values?.[source] ?? DEFAULT_ACTIVITY_FIELD.values[source] ?? '';
-  const templateContext = {
+  const value =
+    segment.values?.[source] ??
+    DEFAULT_ACTIVITY_FIELD.values[source] ??
+    (source === 'tools' ? tools : '');
+  const activity = {
     source,
     spinner,
     tools,
     streaming: displayedStreaming,
+    value,
   };
-  const value = renderTemplate(valueTemplate, templateContext);
   const expression = segment.eval?.trim();
   const text = expression
     ? stringifySegmentValue(
@@ -513,32 +643,22 @@ function renderActivitySegment(
           ctx,
           pi,
           state,
-          activity: { ...templateContext, value },
+          activity,
         }),
         segment
       )
-    : renderTemplate(segment.template ?? DEFAULT_ACTIVITY_FIELD.template, {
-        ...templateContext,
-        value,
-      });
+    : `${spinner} ${value}`;
 
+  const minWidth = segment.isCollapsed ? undefined : (segment.min_width ?? DEFAULT_ACTIVITY_FIELD.min_width);
   return renderTextSegment(
     {
       ...segment,
       fg: segment.fg ?? DEFAULT_ACTIVITY_FIELD.fg,
       bg: segment.bg ?? DEFAULT_ACTIVITY_FIELD.bg,
-      min_width: segment.min_width ?? DEFAULT_ACTIVITY_FIELD.min_width,
+      min_width: minWidth,
     },
     text
   );
-}
-
-function renderTemplate(template: string, context: TemplateContext): string {
-  return template.replace(/\{([A-Za-z0-9_]+)\}/g, (_match, key: string) => {
-    const value = context[key];
-    if (Array.isArray(value)) return value.join(', ');
-    return value === undefined ? '' : String(value);
-  });
 }
 
 export function firstActivityField(): StatusbarSegmentConfig {

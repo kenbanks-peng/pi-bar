@@ -42,3 +42,9 @@ export function renderSegment(
     RESET
   );
 }
+
+/** Calculate the printed visual width of a string by stripping ANSI escape sequences. */
+export function visualLength(str: string): number {
+  return str.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '').length;
+}
+
