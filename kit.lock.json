@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "synced_at": "2026-05-22T15:56:04.202Z",
+  "packages": {
+    "pi-subagents": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "pi-mcp-adapter": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "rpiv-ask-user-question": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "pi-lens": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "rpiv-todo": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "pi-simplify": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "pi-markdown-preview": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "rpiv-btw": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "whatsapp-pi": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "context-mode": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "pi-keychain-provider.ts": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "index.ts": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "pi-bar": {
+      "type": "pi-native",
+      "installed": false,
+      "verified": false,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "pi-codex-conversion": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "graphify-pi": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "pi-hermes-memory": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    },
+    "pk-pi-hermes-evolve": {
+      "type": "pi-native",
+      "installed": true,
+      "verified": true,
+      "installed_at": "2026-05-22T15:56:04.202Z"
+    }
+  },
+  "mcp_servers": {}
+}
