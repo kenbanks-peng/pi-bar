@@ -34,9 +34,16 @@ const STATUSBAR_SEGMENT_STRING_KEYS = new Set<string>([
   'show_if',
   'template',
   'key',
+  'collapsed_eval',
+  'collapsed_template',
 ]);
 
-const STATUSBAR_SEGMENT_NUMBER_KEYS = new Set<string>(['min_duration_ms', 'min_width']);
+const STATUSBAR_SEGMENT_NUMBER_KEYS = new Set<string>([
+  'min_duration_ms',
+  'min_width',
+  'priority',
+]);
+
 
 type StatusbarSegmentType = 'value' | 'meter' | 'status' | 'activity';
 
@@ -73,7 +80,13 @@ export interface StatusbarSegmentConfig {
   min_width?: number;
   key?: string;
   ignore?: string[];
+  priority?: number;
+  collapsed_eval?: string;
+  collapsed_template?: string;
+  hide_if_collapsed?: boolean;
+  isCollapsed?: boolean;
 }
+
 
 interface StatusbarConfig {
   separators: SegmentSeparators;
@@ -145,6 +158,8 @@ function defaultConfig(): PiBarConfig {
           fg: 'text_fg',
           bg: 'model_bg',
           empty_text: 'no model',
+          priority: 3,
+          collapsed_eval: "model?.id ? (model.id.includes('/') ? model.id.split('/').pop() : model.id) : ''",
         },
         {
           type: 'value',
@@ -152,6 +167,8 @@ function defaultConfig(): PiBarConfig {
           fg: 'text_fg',
           bg: 'thinking_bg',
           show_if: 'model?.reasoning',
+          priority: 2,
+          hide_if_collapsed: true,
         },
         {
           type: 'meter',
@@ -166,6 +183,8 @@ function defaultConfig(): PiBarConfig {
             { gte: 50, bg: 'warn' },
             { gte: 0, bg: 'ok' },
           ],
+          priority: 4,
+          collapsed_eval: "Math.round(value) + '%'",
         },
         {
           type: 'status',
@@ -173,6 +192,8 @@ function defaultConfig(): PiBarConfig {
           eval: "'  '",
           fg: 'text_fg',
           states: [{ name: 'default', bg: 'warn' }],
+          priority: 1,
+          hide_if_collapsed: true,
         },
         {
           type: 'status',
@@ -180,6 +201,8 @@ function defaultConfig(): PiBarConfig {
           eval: "' LSP '",
           fg: 'text_fg',
           states: [{ name: 'default', bg: 'warn' }],
+          priority: 2,
+          hide_if_collapsed: true,
         },
         {
           type: 'status',
@@ -188,8 +211,15 @@ function defaultConfig(): PiBarConfig {
           fg: 'text_fg',
           ignore: ['^Codex adapter\\b'],
           states: [{ name: 'default', bg: 'warn' }],
+          priority: 1,
+          hide_if_collapsed: true,
         },
-        { type: 'activity', ...DEFAULT_ACTIVITY_FIELD },
+        {
+          type: 'activity',
+          ...DEFAULT_ACTIVITY_FIELD,
+          priority: 5,
+          collapsed_template: '{spinner}',
+        },
       ],
     },
   };
@@ -424,6 +454,8 @@ function setStatusBarSegmentString(
     case 'show_if':
     case 'template':
     case 'key':
+    case 'collapsed_eval':
+    case 'collapsed_template':
       segment[key] = value;
       return;
     default:
@@ -439,6 +471,7 @@ function setStatusBarSegmentNumber(
   switch (key) {
     case 'min_duration_ms':
     case 'min_width':
+    case 'priority':
       segment[key] = value;
       return;
     default:
@@ -494,6 +527,15 @@ function assignStatusbarSegmentValue(
     segment.type = value;
     return;
   }
+
+  if (key === 'hide_if_collapsed') {
+    if (typeof value !== 'boolean') {
+      throw new Error('Status bar segment hide_if_collapsed must be a boolean');
+    }
+    segment.hide_if_collapsed = value;
+    return;
+  }
+
 
   if (STATUSBAR_SEGMENT_STRING_KEYS.has(key)) {
     if (typeof value !== 'string')

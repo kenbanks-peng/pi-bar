@@ -47,6 +47,8 @@ eval = "`\\u{F4BC} ${model?.id ?? segment.empty_text ?? ''}`"
 empty_text = "no model"
 fg = "text_fg"
 bg = "model_bg"
+priority = 3
+collapsed_eval = "`\\u{F4BC} ${model?.id ? (model.id.includes('/') ? model.id.split('/').pop() : model.id) : ''}`"
 
 [[statusbar.segments]]
 type = "value"
@@ -54,6 +56,8 @@ eval = "pi.getThinkingLevel()"
 show_if = "model?.reasoning"
 fg = "text_fg"
 bg = "thinking_bg"
+priority = 2
+hide_if_collapsed = true
 
 [[statusbar.segments]]
 type = "meter"
@@ -65,6 +69,8 @@ states = [
   { gte = 50, bg = "warn" },
   { gte = 0, bg = "ok" },
 ]
+priority = 4
+collapsed_eval = "`${Math.round(value)}%`"
 
 [[statusbar.segments]]
 type = "status"
@@ -76,6 +82,8 @@ states = [
   { name = "disconnected", match = "WhatsApp: Disconnected$", bg = "alert" },
   { name = "default", bg = "warn" },
 ]
+priority = 1
+hide_if_collapsed = true
 
 [[statusbar.segments]]
 type = "status"
@@ -89,6 +97,8 @@ states = [
   { name = "inactive", match = "^LSP Inactive$", bg = "lsp_bg" },
   { name = "default", bg = "warn" },
 ]
+priority = 2
+hide_if_collapsed = true
 
 [[statusbar.segments]]
 type = "status"
@@ -102,6 +112,8 @@ states = [
   { name = "connecting", match = "^MCP:\\s*connecting", eval = "' \\u{F06F3} MCP … '", bg = "warn" },
   { name = "default", eval = "' \\u{F06F3} MCP '", bg = "warn" },
 ]
+priority = 2
+hide_if_collapsed = true
 
 # catch all for unspecified status keys
 [[statusbar.segments]]
@@ -111,6 +123,8 @@ eval = "` ${state.status?.text ?? ''} `"
 fg = "text_fg"
 ignore = ["^Codex adapter\\b"]
 states = [{ name = "default", bg = "warn" }]
+priority = 1
+hide_if_collapsed = true
 
 [[statusbar.segments]]
 type = "activity"
@@ -122,3 +136,5 @@ sources = ["tools", "streaming"]
 eval = "`${activity.spinner} ${activity.value}`"
 values = { tools = "{tools}", streaming = "working" }
 spinner = { frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"], interval_ms = 100 }
+priority = 5
+collapsed_template = "{spinner}"
