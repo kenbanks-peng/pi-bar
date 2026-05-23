@@ -8,6 +8,7 @@ export interface GitSnapshot {
   branchIcon: string;
   behind: number;
   gitDir: string;
+  hasUpstream: boolean;
   remote: string;
   service: string;
   serviceIcon: string;
@@ -87,10 +88,11 @@ function snapshotKey(snapshot: GitSnapshot | undefined): string {
     snapshot.unstaged,
     snapshot.ahead,
     snapshot.behind,
+    snapshot.hasUpstream,
   ].join('|');
 }
 
-function readGitStatus(cwd: string): Pick<GitSnapshot, 'staged' | 'unstaged' | 'ahead' | 'behind'> {
+function readGitStatus(cwd: string): Pick<GitSnapshot, 'staged' | 'unstaged' | 'ahead' | 'behind' | 'hasUpstream'> {
   try {
     const output = execFileSync('git', ['-C', cwd, 'status', '--porcelain=v2', '--branch'], {
       encoding: 'utf8',
@@ -98,19 +100,26 @@ function readGitStatus(cwd: string): Pick<GitSnapshot, 'staged' | 'unstaged' | '
     });
     return parseGitStatus(output);
   } catch {
-    return { staged: false, unstaged: false, ahead: 0, behind: 0 };
+    return { staged: false, unstaged: false, ahead: 0, behind: 0, hasUpstream: false };
   }
 }
 
-function parseGitStatus(output: string): Pick<GitSnapshot, 'staged' | 'unstaged' | 'ahead' | 'behind'> {
+function parseGitStatus(output: string): Pick<GitSnapshot, 'staged' | 'unstaged' | 'ahead' | 'behind' | 'hasUpstream'> {
   let staged = false;
   let unstaged = false;
   let ahead = 0;
   let behind = 0;
+  let hasUpstream = false;
 
   for (const line of output.split(/\r?\n/)) {
+    if (line.startsWith('# branch.upstream ')) {
+      hasUpstream = true;
+      continue;
+    }
+
     const branch = /^# branch\.ab \+(\d+) -(\d+)$/.exec(line);
     if (branch) {
+      hasUpstream = true;
       ahead = Number.parseInt(branch[1] ?? '0', 10);
       behind = Number.parseInt(branch[2] ?? '0', 10);
       continue;
@@ -135,7 +144,7 @@ function parseGitStatus(output: string): Pick<GitSnapshot, 'staged' | 'unstaged'
     }
   }
 
-  return { staged, unstaged, ahead, behind };
+  return { staged, unstaged, ahead, behind, hasUpstream };
 }
 
 function findGitDir(startDir: string): string | undefined {

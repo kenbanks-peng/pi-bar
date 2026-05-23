@@ -13,6 +13,7 @@ git_staged_bg = "#005b95"
 git_unstaged_bg = "#a17a00"
 git_ahead_bg = "#006b1d"
 git_behind_bg = "#972e2d"
+git_synced_bg = "#313244"
 lsp_bg = "#313244"
 activity_bg = "#313244"
 activity_fg = "#2dd4bf"
@@ -98,12 +99,13 @@ type = "git"
 template = "{remote_icon} {branch_icon} {branch}"
 fg = "text_fg"
 bg = "git_bg"
-# icons = { remote = "", branch = "" }
+icons = { remote = "", branch = "" }
 states = [
   { id = "unstaged", bg = "git_unstaged_bg" },
   { id = "staged", bg = "git_staged_bg" },
   { id = "behind", bg = "git_behind_bg" },
   { id = "ahead", bg = "git_ahead_bg" },
+  { id = "synced", bg = "git_synced_bg" },
 ]
 collapse_order = 3
 collapsed_template = " {branch} "
