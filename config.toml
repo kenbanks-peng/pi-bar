@@ -25,10 +25,6 @@ alert = "#972e2d"
 # Default separators use Powerline/Nerd Font glyphs. For plain terminals, use
 # leading = "[" and trailing = "]" or set both to "".
 # Missing colors use fallback bg/fg colors instead of breaking the bar.
-# Status segments also use key plus states with name, match, template, fg, bg.
-# Meter segments may use value_eval for numeric state matching and template for display text.
-# Meter states support gt, gte, lt, lte, fg, bg and are matched in order.
-# Activity segments support sources, template, values, spinner, and min_duration_ms.
 # Template tokens are per segment type:
 #   value:    {value}, {model}, {short_model}, {thinking}
 #   meter:    {value}, {percent}, {context_window}
@@ -63,6 +59,7 @@ fg = "text_fg"
 bg = "thinking_bg"
 collapse_order = 2
 
+# Meter states support gt, gte, lt, lte, fg, bg and are matched in order.
 [[statusbar.segments]]
 type = "meter"
 value_eval = "ctx.getContextUsage()?.percent ?? 0"
@@ -111,7 +108,7 @@ states = [
   { name = "all_connected", match = "^MCP:\\s*(\\d+)\\/\\1\\s+servers?", bg = "ok" },
   { name = "none_connected", match = "^MCP:\\s*0\\/\\d+\\s+servers?", bg = "alert" },
   { name = "partial_connected", match = "^MCP:\\s*\\d+\\/\\d+\\s+servers?", bg = "warn" },
-  { name = "connecting", match = "^MCP:\\s*connecting", template = "  MCP … ", bg = "warn" },
+  { name = "connecting", match = "^MCP:\\s*connecting", template = " 󰛳 MCP … ", bg = "warn" },
   { name = "default", template = " 󰛳 MCP ", bg = "warn" },
 ]
 collapse_order = 2
