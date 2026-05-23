@@ -9,13 +9,14 @@ export interface StatusStateConfig {
   name: string;
   match?: string;
   eval?: string;
+  template?: string;
   fg?: string;
   bg: string;
 }
 
 type MeterStateNumberKey = keyof Pick<MeterStateConfig, 'gt' | 'gte' | 'lt' | 'lte'>;
 
-const STATUS_STATE_STRING_KEYS = new Set<string>(['name', 'match', 'eval', 'fg', 'bg']);
+const STATUS_STATE_STRING_KEYS = new Set<string>(['name', 'match', 'eval', 'template', 'fg', 'bg']);
 
 const METER_STATE_NUMBER_KEYS: readonly MeterStateNumberKey[] = [
   'gt',
@@ -29,11 +30,13 @@ const STATUSBAR_SEGMENT_STRING_KEYS = new Set<string>([
   'fg',
   'bg',
   'eval',
+  'template',
   'value_eval',
   'empty_text',
   'show_if',
   'key',
   'collapsed_eval',
+  'collapsed_template',
 ]);
 
 const STATUSBAR_SEGMENT_NUMBER_KEYS = new Set<string>([
@@ -66,6 +69,7 @@ export interface StatusbarSegmentConfig {
   fg?: string;
   bg?: string;
   eval?: string;
+  template?: string;
   value_eval?: string;
   states?: Array<StatusStateConfig | MeterStateConfig>;
   empty_text?: string;
@@ -79,6 +83,7 @@ export interface StatusbarSegmentConfig {
   ignore?: string[];
   collapse_order?: number;
   collapsed_eval?: string;
+  collapsed_template?: string;
   isCollapsed?: boolean;
 }
 
@@ -147,16 +152,16 @@ function defaultConfig(): PiBarConfig {
       segments: [
         {
           type: 'value',
-          eval: "model?.id ?? segment.empty_text ?? ''",
+          template: '  {model}',
           fg: 'text_fg',
           bg: 'model_bg',
           empty_text: 'no model',
           collapse_order: 3,
-          collapsed_eval: "model?.id ? (model.id.includes('/') ? model.id.split('/').pop() : model.id) : ''",
+          collapsed_template: '  {short_model}',
         },
         {
           type: 'value',
-          eval: 'pi.getThinkingLevel()',
+          template: '{thinking}',
           fg: 'text_fg',
           bg: 'thinking_bg',
           show_if: 'model?.reasoning',
@@ -164,10 +169,7 @@ function defaultConfig(): PiBarConfig {
         },
         {
           type: 'meter',
-          eval: [
-            '`${Math.round(value)}% ',
-            'of ${humanReadable(model?.contextWindow)}`',
-          ].join(''),
+          template: '{percent}% of {context_window}',
           value_eval: 'ctx.getContextUsage()?.percent ?? 0',
           fg: 'text_fg',
           states: [
@@ -176,12 +178,12 @@ function defaultConfig(): PiBarConfig {
             { gte: 0, bg: 'ok' },
           ],
           collapse_order: 4,
-          collapsed_eval: "Math.round(value) + '%'",
+          collapsed_template: '{percent}%',
         },
         {
           type: 'status',
           key: 'whatsapp',
-          eval: "'  '",
+          template: '  ',
           fg: 'text_fg',
           states: [{ name: 'default', bg: 'warn' }],
           collapse_order: 1,
@@ -189,7 +191,7 @@ function defaultConfig(): PiBarConfig {
         {
           type: 'status',
           key: 'lsp',
-          eval: "' LSP '",
+          template: ' LSP ',
           fg: 'text_fg',
           states: [{ name: 'default', bg: 'warn' }],
           collapse_order: 2,
@@ -197,7 +199,7 @@ function defaultConfig(): PiBarConfig {
         {
           type: 'status',
           key: '*',
-          eval: "` ${state.status?.text ?? ''} `",
+          template: ' {text} ',
           fg: 'text_fg',
           ignore: ['^Codex adapter\\b'],
           states: [{ name: 'default', bg: 'warn' }],
@@ -207,8 +209,8 @@ function defaultConfig(): PiBarConfig {
           type: 'activity',
           ...DEFAULT_ACTIVITY_FIELD,
           collapse_order: 5,
-          eval: '`${activity.spinner} ${activity.value}`',
-          collapsed_eval: 'activity.spinner',
+          template: '{spinner} {value}',
+          collapsed_template: '{spinner}',
         },
       ],
     },
@@ -421,6 +423,7 @@ function setStatusStateString(
     case 'name':
     case 'match':
     case 'eval':
+    case 'template':
     case 'fg':
     case 'bg':
       state[key] = value;
@@ -439,11 +442,13 @@ function setStatusBarSegmentString(
     case 'fg':
     case 'bg':
     case 'eval':
+    case 'template':
     case 'value_eval':
     case 'empty_text':
     case 'show_if':
     case 'key':
     case 'collapsed_eval':
+    case 'collapsed_template':
       segment[key] = value;
       return;
     default:

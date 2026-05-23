@@ -143,11 +143,15 @@ export function buildStatusbarSegments(
 }
 
 function hasCollapsedEval(segment: StatusbarSegmentConfig): boolean {
-  return typeof segment.collapsed_eval === 'string' && segment.collapsed_eval.trim() !== '';
+  return hasText(segment.collapsed_template) || hasText(segment.collapsed_eval);
 }
 
 function isCollapsibleSegment(segment: StatusbarSegmentConfig): boolean {
   return segment.collapse_order !== undefined || hasCollapsedEval(segment);
+}
+
+function hasText(value: string | undefined): value is string {
+  return typeof value === 'string' && value.trim() !== '';
 }
 
 
@@ -197,6 +201,10 @@ function renderStatusbarSegment(
   if (isCollapsed) {
     if (!hasCollapsedEval(segment)) {
       return '';
+    }
+    if (segment.collapsed_template !== undefined) {
+      activeSegment.template = segment.collapsed_template;
+      activeSegment.eval = undefined;
     }
     if (segment.collapsed_eval !== undefined) {
       activeSegment.eval = segment.collapsed_eval;
@@ -249,6 +257,8 @@ interface StatusbarExpressionContext {
   activity?: Record<string, string | boolean | undefined>;
 }
 
+type TemplateTokens = Record<string, string | number | boolean | null | undefined>;
+
 function shouldShowSegment(
   segment: StatusbarSegmentConfig,
   ctx: ExtensionContext,
@@ -269,11 +279,41 @@ function renderValueSegment(
   pi: ExtensionAPI,
   state: StatusbarRenderState
 ): string {
+  const template = segment.template;
+  if (template !== undefined) {
+    return renderTextSegment(segment, renderTemplate(template, valueTokens(segment, ctx, pi)));
+  }
+
   const expression = segment.eval?.trim();
   if (!expression) return renderTextSegment(segment, segment.empty_text ?? '');
 
   const value = safeEvaluateStatusbarExpression(expression, { segment, ctx, pi, state });
   return renderTextSegment(segment, stringifySegmentValue(value, segment));
+}
+
+function renderTemplate(template: string, tokens: TemplateTokens): string {
+  return template.replace(/\{([A-Za-z][A-Za-z0-9_]*)\}/g, (_match, token: string) => {
+    const value = tokens[token];
+    if (value === null || value === undefined || value === false) return '';
+    return String(value);
+  });
+}
+
+function valueTokens(
+  segment: StatusbarSegmentConfig,
+  ctx: ExtensionContext,
+  pi: ExtensionAPI
+): TemplateTokens {
+  const modelId = ctx.model?.id ?? segment.empty_text ?? '';
+  const shortModel = ctx.model?.id
+    ? (ctx.model.id.includes('/') ? ctx.model.id.split('/').pop() : ctx.model.id)
+    : '';
+  return {
+    value: modelId,
+    model: modelId,
+    short_model: shortModel,
+    thinking: pi.getThinkingLevel(),
+  };
 }
 
 function safeEvaluateStatusbarExpression(
@@ -422,6 +462,10 @@ function meterText(
   state: StatusbarRenderState,
   value: number
 ): string {
+  if (segment.template !== undefined) {
+    return renderTemplate(segment.template, meterTokens(value, ctx));
+  }
+
   const expression = segment.eval?.trim();
   if (!expression) return `${Math.round(value)}%`;
   const rendered = safeEvaluateStatusbarExpression(
@@ -430,6 +474,14 @@ function meterText(
     segment.empty_text ?? ''
   );
   return stringifySegmentValue(rendered, segment);
+}
+
+function meterTokens(value: number, ctx: ExtensionContext): TemplateTokens {
+  return {
+    value,
+    percent: Math.round(value),
+    context_window: maybeHumanReadable(ctx.model?.contextWindow),
+  };
 }
 
 function meterState(
@@ -558,10 +610,17 @@ function formatStatusSegmentText(
   const statusContext = parseStatusContext(status, segment.key);
   const displayConfig: StatusbarSegmentConfig = {
     ...segment,
+    template: (segment.collapsed_template !== undefined && segment.template === segment.collapsed_template)
+      ? segment.collapsed_template
+      : (state?.template ?? segment.template),
     eval: (segment.collapsed_eval !== undefined && segment.eval === segment.collapsed_eval)
       ? segment.collapsed_eval
       : (state?.eval ?? segment.eval),
   };
+  if (displayConfig.template !== undefined) {
+    return renderTemplate(displayConfig.template, statusTokens(statusContext));
+  }
+
   const expression = displayConfig.eval?.trim();
 
 
@@ -580,6 +639,17 @@ function formatStatusSegmentText(
   } catch (error) {
     return ` ${status.trim()} `;
   }
+}
+
+function statusTokens(status: Record<string, number | string | boolean>): TemplateTokens {
+  const servers = typeof status.text === 'string'
+    ? (status.text.match(/(\d+\/\d+)/)?.[1] ?? '')
+    : '';
+  return {
+    ...status,
+    value: status.text,
+    servers,
+  };
 }
 
 function parseStatusContext(
@@ -635,6 +705,19 @@ function renderActivitySegment(
     streaming: displayedStreaming,
     value,
   };
+  if (segment.template !== undefined) {
+    const minWidth = segment.isCollapsed ? undefined : (segment.min_width ?? DEFAULT_ACTIVITY_FIELD.min_width);
+    return renderTextSegment(
+      {
+        ...segment,
+        fg: segment.fg ?? DEFAULT_ACTIVITY_FIELD.fg,
+        bg: segment.bg ?? DEFAULT_ACTIVITY_FIELD.bg,
+        min_width: minWidth,
+      },
+      renderTemplate(segment.template, activity)
+    );
+  }
+
   const expression = segment.eval?.trim();
   const text = expression
     ? stringifySegmentValue(
