@@ -9,10 +9,12 @@ import {
   DEFAULT_ACTIVITY_FIELD,
   config,
   type StatusbarSegmentConfig,
+  type GitStateConfig,
   type MeterStateConfig,
   type StatusStateConfig,
 } from './config.js';
 import { humanReadable } from './format.js';
+import type { GitSnapshot } from './git.js';
 import { color } from './palette.js';
 
 export interface StatusbarRenderState {
@@ -21,6 +23,7 @@ export interface StatusbarRenderState {
   displayedStreaming: boolean;
   statuses: ReadonlyMap<string, string>;
   status?: Record<string, unknown>;
+  git?: GitSnapshot;
 }
 
 /** Build the full status bar line from the ordered [[statusbar.segments]] config, with optional responsive collapsing. */
@@ -227,6 +230,8 @@ function renderStatusbarSegment(
       );
     case 'activity':
       return renderActivitySegment(state, activeSegment, ctx, pi);
+    case 'git':
+      return renderGitSegment(activeSegment, state);
   }
 }
 
@@ -291,6 +296,20 @@ function renderValueSegment(
   return renderTextSegment(segment, stringifySegmentValue(value, segment));
 }
 
+function renderGitSegment(segment: StatusbarSegmentConfig, state: StatusbarRenderState): string {
+  const git = state.git;
+  if (!git) return '';
+
+  const template = segment.template ?? ' {remote_icon}{branch_icon}{branch} ';
+  const stateConfig = gitState(git, segment);
+  const displaySegment = {
+    ...segment,
+    fg: stateConfig?.fg ?? segment.fg,
+    bg: stateConfig?.bg ?? segment.bg,
+  };
+  return renderTextSegment(displaySegment, renderTemplate(template, gitTokens(git, segment)));
+}
+
 function renderTemplate(template: string, tokens: TemplateTokens): string {
   return template.replace(/\{([A-Za-z][A-Za-z0-9_]*)\}/g, (_match, token: string) => {
     const value = tokens[token];
@@ -314,6 +333,48 @@ function valueTokens(
     short_model: shortModel,
     thinking: pi.getThinkingLevel(),
   };
+}
+
+function gitTokens(git: GitSnapshot, segment: StatusbarSegmentConfig): TemplateTokens {
+  const remoteIcon = segment.icons?.remote ?? git.serviceIcon;
+  const branchIcon = segment.icons?.branch ?? git.branchIcon;
+  return {
+    value: `${remoteIcon}${branchIcon}${git.branch}`,
+    branch: git.branch,
+    branch_icon: branchIcon,
+    service: git.service,
+    service_icon: git.serviceIcon,
+    remote_icon: remoteIcon,
+    remote: git.remote,
+    staged: git.staged,
+    unstaged: git.unstaged,
+    ahead: git.ahead,
+    behind: git.behind,
+  };
+}
+
+function gitState(git: GitSnapshot, segment: StatusbarSegmentConfig): GitStateConfig | undefined {
+  return (segment.states ?? []).find(
+    (stateConfig): stateConfig is GitStateConfig =>
+      isGitStateConfig(stateConfig) && gitStateMatches(git, stateConfig)
+  );
+}
+
+function gitStateMatches(git: GitSnapshot, stateConfig: GitStateConfig): boolean {
+  switch (stateConfig.id) {
+    case 'unstaged':
+      return git.unstaged;
+    case 'staged':
+      return git.staged;
+    case 'ahead':
+      return git.ahead > 0;
+    case 'behind':
+      return git.behind > 0;
+    case 'default':
+      return git.ahead === 0 && git.behind === 0;
+    default:
+      return false;
+  }
 }
 
 function safeEvaluateStatusbarExpression(
@@ -503,7 +564,7 @@ function meterStateMatches(value: number, stateConfig: MeterStateConfig): boolea
 }
 
 function isMeterStateConfig(
-  stateConfig: StatusStateConfig | MeterStateConfig
+  stateConfig: StatusStateConfig | MeterStateConfig | GitStateConfig
 ): stateConfig is MeterStateConfig {
   return (
     ('gt' in stateConfig && typeof stateConfig.gt === 'number') ||
@@ -513,8 +574,14 @@ function isMeterStateConfig(
   );
 }
 
+function isGitStateConfig(
+  stateConfig: StatusStateConfig | MeterStateConfig | GitStateConfig
+): stateConfig is GitStateConfig {
+  return 'id' in stateConfig && typeof stateConfig.id === 'string';
+}
+
 function isStatusStateConfig(
-  stateConfig: StatusStateConfig | MeterStateConfig
+  stateConfig: StatusStateConfig | MeterStateConfig | GitStateConfig
 ): stateConfig is StatusStateConfig {
   return 'name' in stateConfig && typeof stateConfig.name === 'string';
 }

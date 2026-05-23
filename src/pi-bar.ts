@@ -14,11 +14,13 @@ import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import type { TUI } from '@earendil-works/pi-tui';
 import { truncateToWidth } from '@earendil-works/pi-tui';
 
+import { GitSnapshotProvider } from './git.js';
 import { buildStatusbarSegments, firstActivityField } from './statusbar.js';
 
 export default function (pi: ExtensionAPI) {
   let tui: TUI | null = null;
   const requestRender = () => tui?.requestRender();
+  const gitSnapshots = new GitSnapshotProvider(requestRender);
 
   // ── Spinner state ────────────────────────────────────────────────────────
   let spinnerFrame = 0;
@@ -148,6 +150,7 @@ export default function (pi: ExtensionAPI) {
       return {
         dispose() {
           clearUpdateTimer();
+          gitSnapshots.stop();
           stopSpinner();
           tui = null;
         },
@@ -162,6 +165,7 @@ export default function (pi: ExtensionAPI) {
               displayedTools,
               displayedStreaming,
               statuses: statusbarData.getExtensionStatuses(),
+              git: gitSnapshots.current(ctx.cwd),
             },
             width
           );
@@ -170,6 +174,7 @@ export default function (pi: ExtensionAPI) {
       };
     };
 
+    gitSnapshots.start(ctx.cwd);
     statusbarSetter.call(ctx.ui, statusbarFactory);
   });
 }

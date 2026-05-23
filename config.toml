@@ -1,4 +1,4 @@
-# pi-bar configuration.
+# pi-bar configuration
 #
 # Colors accept:
 # - hex values, such as "#rrggbb"
@@ -8,6 +8,12 @@
 text_fg = "#cdd6f4"
 model_bg = "#005b95"
 thinking_bg = "#005b95"
+git_bg = "#313244"
+git_staged_bg = "#005b95"
+git_unstaged_bg = "#a17a00"
+git_ahead_bg = "#6b3fa0"
+git_behind_bg = "#6b3fa0"
+git_default_bg = "#006b1d"
 lsp_bg = "#313244"
 activity_bg = "#313244"
 activity_fg = "#2dd4bf"
@@ -21,6 +27,7 @@ alert = "#972e2d"
 # Segment types:
 # - "value": renders template, or empty_text, as colored text.
 # - "meter": evaluates a number, renders text, and applies matching states.
+# - "git": renders branch and remote service from native filesystem reads.
 # - "status": renders a keyed pi status only when present.
 # - "activity": renders tool or streaming activity with spinner settings.
 #
@@ -43,6 +50,7 @@ alert = "#972e2d"
 #
 # Template tokens:
 # - value: {value}, {model}, {short_model}, {thinking}
+# - git: {remote_icon}, {branch_icon}, {branch}, {staged}, {unstaged}, {ahead}, {behind}, {service}, {service_icon}, {remote}
 # - meter: {value}, {percent}, {context_window}
 # - status: {value}, {text}, {key}, plus numbers parsed from status text
 # - activity: {source}, {spinner}, {tools}, {streaming}, {value}
@@ -85,6 +93,22 @@ states = [
 ]
 collapse_order = 4
 collapsed_template = "{percent}%"
+
+[[statusbar.segments]]
+type = "git"
+template = "{remote_icon} {branch_icon} {branch}"
+fg = "text_fg"
+bg = "git_bg"
+icons = { remote = "", branch = "" }
+states = [
+  { id = "unstaged", bg = "git_unstaged_bg" },
+  { id = "staged", bg = "git_staged_bg" },
+  { id = "behind", bg = "git_behind_bg" },
+  { id = "ahead", bg = "git_ahead_bg" },
+  { id = "default", bg = "git_default_bg" },
+]
+collapse_order = 3
+collapsed_template = " {branch} "
 
 [[statusbar.segments]]
 type = "status"

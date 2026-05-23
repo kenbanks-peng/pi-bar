@@ -18,6 +18,14 @@ type MeterStateNumberKey = keyof Pick<MeterStateConfig, 'gt' | 'gte' | 'lt' | 'l
 
 const STATUS_STATE_STRING_KEYS = new Set<string>(['name', 'match', 'eval', 'template', 'fg', 'bg']);
 
+const GIT_STATE_IDS = new Set<string>([
+  'unstaged',
+  'staged',
+  'ahead',
+  'behind',
+  'default',
+]);
+
 const METER_STATE_NUMBER_KEYS: readonly MeterStateNumberKey[] = [
   'gt',
   'gte',
@@ -35,6 +43,7 @@ const STATUSBAR_SEGMENT_STRING_KEYS = new Set<string>([
   'empty_text',
   'show_if',
   'key',
+  'format',
   'collapsed_eval',
   'collapsed_template',
 ]);
@@ -46,13 +55,19 @@ const STATUSBAR_SEGMENT_NUMBER_KEYS = new Set<string>([
 ]);
 
 
-type StatusbarSegmentType = 'value' | 'meter' | 'status' | 'activity';
+type StatusbarSegmentType = 'value' | 'meter' | 'status' | 'activity' | 'git';
 
 export interface MeterStateConfig {
   gt?: number;
   gte?: number;
   lt?: number;
   lte?: number;
+  fg?: string;
+  bg?: string;
+}
+
+export interface GitStateConfig {
+  id: string;
   fg?: string;
   bg?: string;
 }
@@ -64,6 +79,11 @@ export interface ActivitySpinnerConfig {
 
 export type ActivitySource = 'tools' | 'streaming';
 
+export interface GitIconConfig {
+  branch?: string;
+  remote?: string;
+}
+
 export interface StatusbarSegmentConfig {
   type: StatusbarSegmentType;
   fg?: string;
@@ -71,15 +91,17 @@ export interface StatusbarSegmentConfig {
   eval?: string;
   template?: string;
   value_eval?: string;
-  states?: Array<StatusStateConfig | MeterStateConfig>;
+  states?: Array<StatusStateConfig | MeterStateConfig | GitStateConfig>;
   empty_text?: string;
   show_if?: string;
   values?: Partial<Record<ActivitySource, string>>;
+  icons?: GitIconConfig;
   sources?: ActivitySource[];
   spinner?: ActivitySpinnerConfig;
   min_duration_ms?: number;
   min_width?: number;
   key?: string;
+  format?: string;
   ignore?: string[];
   collapse_order?: number;
   collapsed_eval?: string;
@@ -135,6 +157,7 @@ function defaultColors(): Record<string, string> {
     text_fg: '#cdd6f4',
     model_bg: '#005b95',
     thinking_bg: '#005b95',
+    git_bg: '#313244',
     lsp_bg: '#313244',
     activity_bg: '#313244',
     activity_fg: '#2dd4bf',
@@ -179,6 +202,14 @@ function defaultConfig(): PiBarConfig {
           ],
           collapse_order: 4,
           collapsed_template: '{percent}%',
+        },
+        {
+          type: 'git',
+          template: ' {remote_icon}{branch_icon}{branch} ',
+          fg: 'text_fg',
+          bg: 'git_bg',
+          collapse_order: 3,
+          collapsed_template: ' {branch} ',
         },
         {
           type: 'status',
@@ -235,7 +266,7 @@ function parseStringValue(raw: string): string {
 
 function parseArrayValue(
   raw: string
-): string[] | Array<StatusStateConfig | MeterStateConfig> {
+): string[] | Array<StatusStateConfig | MeterStateConfig | GitStateConfig> {
   const trimmed = raw.trim();
   if (hasInlineTableArray(trimmed)) return parseInlineTableArray(trimmed);
 
@@ -250,10 +281,10 @@ function hasInlineTableArray(raw: string): boolean {
   return findUnquotedChar(raw, '{') !== -1;
 }
 
-function parseInlineTableArray(raw: string): Array<StatusStateConfig | MeterStateConfig> {
+function parseInlineTableArray(raw: string): Array<StatusStateConfig | MeterStateConfig | GitStateConfig> {
   const items = splitTopLevelArrayItems(raw).map((itemRaw) => {
     const body = inlineTableBody(itemRaw);
-    const item: Partial<StatusStateConfig & MeterStateConfig> = {};
+    const item: Partial<StatusStateConfig & MeterStateConfig & GitStateConfig> = {};
     for (const part of splitTopLevelFields(body)) {
       const field = /^(?<key>[A-Za-z0-9_]+)\s*=\s*(?<value>.+)$/.exec(part.trim());
       if (!field?.groups) throw new Error(`Unsupported TOML inline table: {${body}}`);
@@ -263,6 +294,11 @@ function parseInlineTableArray(raw: string): Array<StatusStateConfig | MeterStat
           throw new Error(`State ${field.groups.key} must be a number`);
         }
         setMeterStateNumber(item, field.groups.key, value);
+      } else if (field.groups.key === 'id') {
+        if (typeof value !== 'string') {
+          throw new Error('State id must be a string');
+        }
+        setGitStateId(item, value);
       } else if (STATUS_STATE_STRING_KEYS.has(field.groups.key)) {
         if (typeof value !== 'string') {
           throw new Error(`State ${field.groups.key} must be a string`);
@@ -277,11 +313,12 @@ function parseInlineTableArray(raw: string): Array<StatusStateConfig | MeterStat
       (key) => typeof item[key] === 'number'
     );
     if (hasMeterMatcher) return item as MeterStateConfig;
+    if (typeof item.id === 'string' && GIT_STATE_IDS.has(item.id)) return item as GitStateConfig;
     if (typeof item.name === 'string' && typeof item.bg === 'string') {
       return item as StatusStateConfig;
     }
 
-    throw new Error('State requires either gt/gte/lt/lte or name and bg');
+    throw new Error('State requires either gt/gte/lt/lte, id, or name and bg');
   });
   if (items.length === 0) throw new Error(`Unsupported TOML array value: ${raw}`);
   return items;
@@ -377,7 +414,7 @@ function parseValue(
   | number
   | boolean
   | string[]
-  | Array<StatusStateConfig | MeterStateConfig>
+  | Array<StatusStateConfig | MeterStateConfig | GitStateConfig>
   | Record<string, unknown> {
   const trimmed = raw.trim();
   if (trimmed === 'true') return true;
@@ -389,7 +426,7 @@ function parseValue(
 }
 
 function assertSegmentType(value: unknown): asserts value is StatusbarSegmentType {
-  const valid = ['value', 'meter', 'status', 'activity'];
+  const valid = ['value', 'meter', 'status', 'activity', 'git'];
   if (typeof value !== 'string' || !valid.includes(value)) {
     throw new Error(
       `Unsupported status bar segment type: ${String(value)}. Supported: ${valid.join(', ')}`
@@ -398,7 +435,7 @@ function assertSegmentType(value: unknown): asserts value is StatusbarSegmentTyp
 }
 
 function setMeterStateNumber(
-  state: Partial<StatusStateConfig & MeterStateConfig>,
+  state: Partial<StatusStateConfig & MeterStateConfig & GitStateConfig>,
   key: string,
   value: number
 ): void {
@@ -412,6 +449,16 @@ function setMeterStateNumber(
     default:
       throw new Error(`Unsupported meter state key: ${key}`);
   }
+}
+
+function setGitStateId(
+  state: Partial<StatusStateConfig & MeterStateConfig & GitStateConfig>,
+  value: string
+): void {
+  if (!GIT_STATE_IDS.has(value)) {
+    throw new Error(`Unsupported git state id: ${value}`);
+  }
+  state.id = value;
 }
 
 function setStatusStateString(
@@ -447,6 +494,7 @@ function setStatusBarSegmentString(
     case 'empty_text':
     case 'show_if':
     case 'key':
+    case 'format':
     case 'collapsed_eval':
     case 'collapsed_template':
       segment[key] = value;
@@ -506,6 +554,23 @@ function parseActivitySpinner(value: unknown): ActivitySpinnerConfig {
   return { frames, interval_ms: intervalMs };
 }
 
+function parseGitIcons(value: unknown): GitIconConfig {
+  if (!isRecord(value))
+    throw new Error('Status bar segment icons must be an inline table');
+
+  const icons: GitIconConfig = {};
+  for (const [key, fieldValue] of Object.entries(value)) {
+    if (key !== 'branch' && key !== 'remote') {
+      throw new Error(`Unsupported git icon key: ${key}`);
+    }
+    if (typeof fieldValue !== 'string') {
+      throw new Error(`Status bar segment icons.${key} must be a string`);
+    }
+    icons[key] = fieldValue;
+  }
+  return icons;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -553,6 +618,11 @@ function assignStatusbarSegmentValue(
 
   if (key === 'values') {
     segment.values = parseActivityValues(value);
+    return;
+  }
+
+  if (key === 'icons') {
+    segment.icons = parseGitIcons(value);
     return;
   }
 
