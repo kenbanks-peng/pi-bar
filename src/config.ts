@@ -35,6 +35,7 @@ const STATUSBAR_SEGMENT_STRING_KEYS = new Set<string>([
   'empty_text',
   'show_if',
   'key',
+  'format',
   'collapsed_eval',
   'collapsed_template',
 ]);
@@ -46,7 +47,7 @@ const STATUSBAR_SEGMENT_NUMBER_KEYS = new Set<string>([
 ]);
 
 
-type StatusbarSegmentType = 'value' | 'meter' | 'status' | 'activity';
+type StatusbarSegmentType = 'value' | 'meter' | 'status' | 'activity' | 'git';
 
 export interface MeterStateConfig {
   gt?: number;
@@ -64,6 +65,11 @@ export interface ActivitySpinnerConfig {
 
 export type ActivitySource = 'tools' | 'streaming';
 
+export interface GitIconConfig {
+  branch?: string;
+  remote?: string;
+}
+
 export interface StatusbarSegmentConfig {
   type: StatusbarSegmentType;
   fg?: string;
@@ -75,11 +81,13 @@ export interface StatusbarSegmentConfig {
   empty_text?: string;
   show_if?: string;
   values?: Partial<Record<ActivitySource, string>>;
+  icons?: GitIconConfig;
   sources?: ActivitySource[];
   spinner?: ActivitySpinnerConfig;
   min_duration_ms?: number;
   min_width?: number;
   key?: string;
+  format?: string;
   ignore?: string[];
   collapse_order?: number;
   collapsed_eval?: string;
@@ -135,6 +143,7 @@ function defaultColors(): Record<string, string> {
     text_fg: '#cdd6f4',
     model_bg: '#005b95',
     thinking_bg: '#005b95',
+    git_bg: '#313244',
     lsp_bg: '#313244',
     activity_bg: '#313244',
     activity_fg: '#2dd4bf',
@@ -179,6 +188,14 @@ function defaultConfig(): PiBarConfig {
           ],
           collapse_order: 4,
           collapsed_template: '{percent}%',
+        },
+        {
+          type: 'git',
+          template: ' {remote_icon}{branch_icon}{branch} ',
+          fg: 'text_fg',
+          bg: 'git_bg',
+          collapse_order: 3,
+          collapsed_template: ' {branch} ',
         },
         {
           type: 'status',
@@ -389,7 +406,7 @@ function parseValue(
 }
 
 function assertSegmentType(value: unknown): asserts value is StatusbarSegmentType {
-  const valid = ['value', 'meter', 'status', 'activity'];
+  const valid = ['value', 'meter', 'status', 'activity', 'git'];
   if (typeof value !== 'string' || !valid.includes(value)) {
     throw new Error(
       `Unsupported status bar segment type: ${String(value)}. Supported: ${valid.join(', ')}`
@@ -447,6 +464,7 @@ function setStatusBarSegmentString(
     case 'empty_text':
     case 'show_if':
     case 'key':
+    case 'format':
     case 'collapsed_eval':
     case 'collapsed_template':
       segment[key] = value;
@@ -506,6 +524,23 @@ function parseActivitySpinner(value: unknown): ActivitySpinnerConfig {
   return { frames, interval_ms: intervalMs };
 }
 
+function parseGitIcons(value: unknown): GitIconConfig {
+  if (!isRecord(value))
+    throw new Error('Status bar segment icons must be an inline table');
+
+  const icons: GitIconConfig = {};
+  for (const [key, fieldValue] of Object.entries(value)) {
+    if (key !== 'branch' && key !== 'remote') {
+      throw new Error(`Unsupported git icon key: ${key}`);
+    }
+    if (typeof fieldValue !== 'string') {
+      throw new Error(`Status bar segment icons.${key} must be a string`);
+    }
+    icons[key] = fieldValue;
+  }
+  return icons;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -553,6 +588,11 @@ function assignStatusbarSegmentValue(
 
   if (key === 'values') {
     segment.values = parseActivityValues(value);
+    return;
+  }
+
+  if (key === 'icons') {
+    segment.icons = parseGitIcons(value);
     return;
   }
 

@@ -13,6 +13,7 @@ import {
   type StatusStateConfig,
 } from './config.js';
 import { humanReadable } from './format.js';
+import type { GitSnapshot } from './git.js';
 import { color } from './palette.js';
 
 export interface StatusbarRenderState {
@@ -21,6 +22,7 @@ export interface StatusbarRenderState {
   displayedStreaming: boolean;
   statuses: ReadonlyMap<string, string>;
   status?: Record<string, unknown>;
+  git?: GitSnapshot;
 }
 
 /** Build the full status bar line from the ordered [[statusbar.segments]] config, with optional responsive collapsing. */
@@ -227,6 +229,8 @@ function renderStatusbarSegment(
       );
     case 'activity':
       return renderActivitySegment(state, activeSegment, ctx, pi);
+    case 'git':
+      return renderGitSegment(activeSegment, state);
   }
 }
 
@@ -291,6 +295,14 @@ function renderValueSegment(
   return renderTextSegment(segment, stringifySegmentValue(value, segment));
 }
 
+function renderGitSegment(segment: StatusbarSegmentConfig, state: StatusbarRenderState): string {
+  const git = state.git;
+  if (!git) return '';
+
+  const template = segment.template ?? ' {remote_icon}{branch_icon}{branch} ';
+  return renderTextSegment(segment, renderTemplate(template, gitTokens(git, segment)));
+}
+
 function renderTemplate(template: string, tokens: TemplateTokens): string {
   return template.replace(/\{([A-Za-z][A-Za-z0-9_]*)\}/g, (_match, token: string) => {
     const value = tokens[token];
@@ -313,6 +325,20 @@ function valueTokens(
     model: modelId,
     short_model: shortModel,
     thinking: pi.getThinkingLevel(),
+  };
+}
+
+function gitTokens(git: GitSnapshot, segment: StatusbarSegmentConfig): TemplateTokens {
+  const remoteIcon = segment.icons?.remote ?? git.serviceIcon;
+  const branchIcon = segment.icons?.branch ?? git.branchIcon;
+  return {
+    value: `${remoteIcon}${branchIcon}${git.branch}`,
+    branch: git.branch,
+    branch_icon: branchIcon,
+    service: git.service,
+    service_icon: git.serviceIcon,
+    remote_icon: remoteIcon,
+    remote: git.remote,
   };
 }
 

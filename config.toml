@@ -8,6 +8,7 @@
 text_fg = "#cdd6f4"
 model_bg = "#005b95"
 thinking_bg = "#005b95"
+git_bg = "#313244"
 lsp_bg = "#313244"
 activity_bg = "#313244"
 activity_fg = "#2dd4bf"
@@ -21,6 +22,7 @@ alert = "#972e2d"
 # Segment types:
 # - "value": renders template, or empty_text, as colored text.
 # - "meter": evaluates a number, renders text, and applies matching states.
+# - "git": renders branch and remote service from native filesystem reads.
 # - "status": renders a keyed pi status only when present.
 # - "activity": renders tool or streaming activity with spinner settings.
 #
@@ -43,6 +45,7 @@ alert = "#972e2d"
 #
 # Template tokens:
 # - value: {value}, {model}, {short_model}, {thinking}
+# - git: {remote_icon}, {branch_icon}, {branch}, {service}, {service_icon}, {remote}
 # - meter: {value}, {percent}, {context_window}
 # - status: {value}, {text}, {key}, plus numbers parsed from status text
 # - activity: {source}, {spinner}, {tools}, {streaming}, {value}
@@ -85,6 +88,15 @@ states = [
 ]
 collapse_order = 4
 collapsed_template = "{percent}%"
+
+[[statusbar.segments]]
+type = "git"
+template = "{remote_icon}{branch_icon}{branch}"
+fg = "text_fg"
+bg = "git_bg"
+# icons = { remote = "", branch = "" }
+collapse_order = 3
+collapsed_template = " {branch} "
 
 [[statusbar.segments]]
 type = "status"

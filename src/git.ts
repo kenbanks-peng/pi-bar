@@ -1,0 +1,154 @@
+import { existsSync, readFileSync, statSync } from 'fs';
+import { dirname, isAbsolute, join, resolve } from 'path';
+
+export interface GitSnapshot {
+  branch: string;
+  branchIcon: string;
+  gitDir: string;
+  remote: string;
+  service: string;
+  serviceIcon: string;
+  text: string;
+}
+
+const GITHUB = '';
+const GITLAB = '';
+const BITBUCKET = '';
+const AZURE = '󰠅';
+const GIT = '';
+const BRANCH = '';
+
+const REFRESH_INTERVAL_MS = 1000;
+
+export class GitSnapshotProvider {
+  private readonly snapshots = new Map<string, GitSnapshot | undefined>();
+  private timer: ReturnType<typeof setInterval> | null = null;
+  private cwd: string | null = null;
+
+  constructor(private readonly onChange: () => void) {}
+
+  start(cwd: string): void {
+    this.cwd = cwd;
+    this.refresh();
+    this.timer = setInterval(() => this.refresh(), REFRESH_INTERVAL_MS);
+  }
+
+  stop(): void {
+    if (this.timer !== null) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+    this.cwd = null;
+    this.snapshots.clear();
+  }
+
+  current(cwd: string): GitSnapshot | undefined {
+    return this.snapshots.get(cwd);
+  }
+
+  private refresh(): void {
+    const cwd = this.cwd;
+    if (!cwd) return;
+
+    const previous = this.snapshots.get(cwd)?.text;
+    const next = readGitSnapshot(cwd);
+    this.snapshots.set(cwd, next);
+
+    if (previous !== next?.text) this.onChange();
+  }
+}
+
+function readGitSnapshot(cwd: string): GitSnapshot | undefined {
+  const gitDir = findGitDir(cwd);
+  if (!gitDir) return undefined;
+
+  const branch = readBranch(gitDir);
+  if (!branch) return undefined;
+
+  const remote = readOriginUrl(gitDir);
+  const { service, serviceIcon } = remoteService(remote);
+  const branchIcon = BRANCH;
+  const text = `${serviceIcon}${branchIcon}${branch}`;
+
+  return { branch, branchIcon, gitDir, remote, service, serviceIcon, text };
+}
+
+function findGitDir(startDir: string): string | undefined {
+  let dir = resolve(startDir);
+
+  while (true) {
+    const candidate = join(dir, '.git');
+    const gitDir = resolveGitDir(candidate);
+    if (gitDir) return gitDir;
+
+    const parent = dirname(dir);
+    if (parent === dir) return undefined;
+    dir = parent;
+  }
+}
+
+function resolveGitDir(path: string): string | undefined {
+  if (!existsSync(path)) return undefined;
+
+  const stat = statSync(path);
+  if (stat.isDirectory()) return path;
+  if (!stat.isFile()) return undefined;
+
+  const match = /^gitdir:\s*(.+)$/m.exec(readFileSync(path, 'utf8'));
+  if (!match?.[1]) return undefined;
+
+  const gitDir = match[1].trim();
+  return isAbsolute(gitDir) ? gitDir : resolve(dirname(path), gitDir);
+}
+
+function readBranch(gitDir: string): string | undefined {
+  const head = readOptional(join(gitDir, 'HEAD'))?.trim();
+  if (!head) return undefined;
+
+  const refPrefix = 'ref: refs/heads/';
+  if (head.startsWith(refPrefix)) return truncate(head.slice(refPrefix.length));
+
+  return truncate(head.slice(0, 7));
+}
+
+function readOriginUrl(gitDir: string): string {
+  const config = readOptional(join(gitDir, 'config'));
+  if (!config) return '';
+
+  let inOrigin = false;
+  for (const rawLine of config.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (line.startsWith('[')) {
+      inOrigin = line === '[remote "origin"]';
+      continue;
+    }
+    if (!inOrigin) continue;
+
+    const match = /^url\s*=\s*(.+)$/.exec(line);
+    if (match?.[1]) return match[1].trim();
+  }
+
+  return '';
+}
+
+function remoteService(remote: string): Pick<GitSnapshot, 'service' | 'serviceIcon'> {
+  if (remote.includes('github')) return { service: 'github', serviceIcon: GITHUB };
+  if (remote.includes('gitlab')) return { service: 'gitlab', serviceIcon: GITLAB };
+  if (remote.includes('bitbucket')) return { service: 'bitbucket', serviceIcon: BITBUCKET };
+  if (remote.includes('azure') || remote.includes('visualstudio')) {
+    return { service: 'azure', serviceIcon: AZURE };
+  }
+  return { service: remote ? 'git' : '', serviceIcon: GIT };
+}
+
+function readOptional(path: string): string | undefined {
+  try {
+    return readFileSync(path, 'utf8');
+  } catch {
+    return undefined;
+  }
+}
+
+function truncate(value: string): string {
+  return value.length > 25 ? `${value.slice(0, 25)}…` : value;
+}
