@@ -1,14 +1,19 @@
 import { existsSync, readFileSync, statSync } from 'fs';
+import { execFileSync } from 'child_process';
 import { dirname, isAbsolute, join, resolve } from 'path';
 
 export interface GitSnapshot {
+  ahead: number;
   branch: string;
   branchIcon: string;
+  behind: number;
   gitDir: string;
   remote: string;
   service: string;
   serviceIcon: string;
+  staged: boolean;
   text: string;
+  unstaged: boolean;
 }
 
 const GITHUB = '';
@@ -50,11 +55,11 @@ export class GitSnapshotProvider {
     const cwd = this.cwd;
     if (!cwd) return;
 
-    const previous = this.snapshots.get(cwd)?.text;
+    const previous = snapshotKey(this.snapshots.get(cwd));
     const next = readGitSnapshot(cwd);
     this.snapshots.set(cwd, next);
 
-    if (previous !== next?.text) this.onChange();
+    if (previous !== snapshotKey(next)) this.onChange();
   }
 }
 
@@ -69,8 +74,68 @@ function readGitSnapshot(cwd: string): GitSnapshot | undefined {
   const { service, serviceIcon } = remoteService(remote);
   const branchIcon = BRANCH;
   const text = `${serviceIcon}${branchIcon}${branch}`;
+  const status = readGitStatus(cwd);
 
-  return { branch, branchIcon, gitDir, remote, service, serviceIcon, text };
+  return { branch, branchIcon, gitDir, remote, service, serviceIcon, text, ...status };
+}
+
+function snapshotKey(snapshot: GitSnapshot | undefined): string {
+  if (!snapshot) return '';
+  return [
+    snapshot.text,
+    snapshot.staged,
+    snapshot.unstaged,
+    snapshot.ahead,
+    snapshot.behind,
+  ].join('|');
+}
+
+function readGitStatus(cwd: string): Pick<GitSnapshot, 'staged' | 'unstaged' | 'ahead' | 'behind'> {
+  try {
+    const output = execFileSync('git', ['-C', cwd, 'status', '--porcelain=v2', '--branch'], {
+      encoding: 'utf8',
+      timeout: 500,
+    });
+    return parseGitStatus(output);
+  } catch {
+    return { staged: false, unstaged: false, ahead: 0, behind: 0 };
+  }
+}
+
+function parseGitStatus(output: string): Pick<GitSnapshot, 'staged' | 'unstaged' | 'ahead' | 'behind'> {
+  let staged = false;
+  let unstaged = false;
+  let ahead = 0;
+  let behind = 0;
+
+  for (const line of output.split(/\r?\n/)) {
+    const branch = /^# branch\.ab \+(\d+) -(\d+)$/.exec(line);
+    if (branch) {
+      ahead = Number.parseInt(branch[1] ?? '0', 10);
+      behind = Number.parseInt(branch[2] ?? '0', 10);
+      continue;
+    }
+
+    if (line.startsWith('? ')) {
+      unstaged = true;
+      continue;
+    }
+
+    if (line.startsWith('u ')) {
+      staged = true;
+      unstaged = true;
+      continue;
+    }
+
+    if (line.startsWith('1 ') || line.startsWith('2 ')) {
+      const indexStatus = line[2];
+      const worktreeStatus = line[3];
+      if (indexStatus && indexStatus !== '.') staged = true;
+      if (worktreeStatus && worktreeStatus !== '.') unstaged = true;
+    }
+  }
+
+  return { staged, unstaged, ahead, behind };
 }
 
 function findGitDir(startDir: string): string | undefined {

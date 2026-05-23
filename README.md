@@ -84,7 +84,7 @@ Segment types:
 Template tokens:
 
 - `value`: `{value}` / `{model}` = full model id or `empty_text`, `{short_model}` = model id after the final `/`, `{thinking}` = current thinking level.
-- `git`: `{remote_icon}` = remote service icon, `{branch_icon}` = branch icon, `{branch}` = current branch, `{service}` = remote service, `{service_icon}` = default remote service icon, `{remote}` = origin URL. Set `icons = { remote = "...", branch = "..." }` on a git segment to override icons.
+- `git`: `{remote_icon}` = remote service icon, `{branch_icon}` = branch icon, `{branch}` = current branch, `{staged}` / `{unstaged}` = dirty booleans, `{ahead}` / `{behind}` = upstream counts, `{service}` = remote service, `{service_icon}` = default remote service icon, `{remote}` = origin URL. Set `icons = { remote = "...", branch = "..." }` on a git segment to override icons. Git `states` support `id = "unstaged"`, `id = "staged"`, `id = "ahead"`, and `id = "behind"` with `fg`/`bg` colors.
 - `meter`: `{value}` = raw numeric meter value, `{percent}` = rounded value, `{context_window}` = human-readable model context window.
 - `status`: `{value}` / `{text}` = normalized status text, `{key}` = status key, plus numeric tokens parsed from status text such as `{errors}` or `{warnings}`. MCP statuses also expose `{servers}` for the `connected/total` count.
 - `activity`: `{source}` = `tools` or `streaming`, `{spinner}` = current spinner frame, `{tools}` = comma-separated tool names, `{streaming}` = streaming state, `{value}` = source display value.

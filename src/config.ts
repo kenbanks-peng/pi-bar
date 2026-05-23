@@ -18,6 +18,8 @@ type MeterStateNumberKey = keyof Pick<MeterStateConfig, 'gt' | 'gte' | 'lt' | 'l
 
 const STATUS_STATE_STRING_KEYS = new Set<string>(['name', 'match', 'eval', 'template', 'fg', 'bg']);
 
+const GIT_STATE_IDS = new Set<string>(['unstaged', 'staged', 'ahead', 'behind']);
+
 const METER_STATE_NUMBER_KEYS: readonly MeterStateNumberKey[] = [
   'gt',
   'gte',
@@ -58,6 +60,12 @@ export interface MeterStateConfig {
   bg?: string;
 }
 
+export interface GitStateConfig {
+  id: string;
+  fg?: string;
+  bg?: string;
+}
+
 export interface ActivitySpinnerConfig {
   frames: string[];
   interval_ms: number;
@@ -77,7 +85,7 @@ export interface StatusbarSegmentConfig {
   eval?: string;
   template?: string;
   value_eval?: string;
-  states?: Array<StatusStateConfig | MeterStateConfig>;
+  states?: Array<StatusStateConfig | MeterStateConfig | GitStateConfig>;
   empty_text?: string;
   show_if?: string;
   values?: Partial<Record<ActivitySource, string>>;
@@ -252,7 +260,7 @@ function parseStringValue(raw: string): string {
 
 function parseArrayValue(
   raw: string
-): string[] | Array<StatusStateConfig | MeterStateConfig> {
+): string[] | Array<StatusStateConfig | MeterStateConfig | GitStateConfig> {
   const trimmed = raw.trim();
   if (hasInlineTableArray(trimmed)) return parseInlineTableArray(trimmed);
 
@@ -267,10 +275,10 @@ function hasInlineTableArray(raw: string): boolean {
   return findUnquotedChar(raw, '{') !== -1;
 }
 
-function parseInlineTableArray(raw: string): Array<StatusStateConfig | MeterStateConfig> {
+function parseInlineTableArray(raw: string): Array<StatusStateConfig | MeterStateConfig | GitStateConfig> {
   const items = splitTopLevelArrayItems(raw).map((itemRaw) => {
     const body = inlineTableBody(itemRaw);
-    const item: Partial<StatusStateConfig & MeterStateConfig> = {};
+    const item: Partial<StatusStateConfig & MeterStateConfig & GitStateConfig> = {};
     for (const part of splitTopLevelFields(body)) {
       const field = /^(?<key>[A-Za-z0-9_]+)\s*=\s*(?<value>.+)$/.exec(part.trim());
       if (!field?.groups) throw new Error(`Unsupported TOML inline table: {${body}}`);
@@ -280,6 +288,11 @@ function parseInlineTableArray(raw: string): Array<StatusStateConfig | MeterStat
           throw new Error(`State ${field.groups.key} must be a number`);
         }
         setMeterStateNumber(item, field.groups.key, value);
+      } else if (field.groups.key === 'id') {
+        if (typeof value !== 'string') {
+          throw new Error('State id must be a string');
+        }
+        setGitStateId(item, value);
       } else if (STATUS_STATE_STRING_KEYS.has(field.groups.key)) {
         if (typeof value !== 'string') {
           throw new Error(`State ${field.groups.key} must be a string`);
@@ -294,11 +307,12 @@ function parseInlineTableArray(raw: string): Array<StatusStateConfig | MeterStat
       (key) => typeof item[key] === 'number'
     );
     if (hasMeterMatcher) return item as MeterStateConfig;
+    if (typeof item.id === 'string' && GIT_STATE_IDS.has(item.id)) return item as GitStateConfig;
     if (typeof item.name === 'string' && typeof item.bg === 'string') {
       return item as StatusStateConfig;
     }
 
-    throw new Error('State requires either gt/gte/lt/lte or name and bg');
+    throw new Error('State requires either gt/gte/lt/lte, id, or name and bg');
   });
   if (items.length === 0) throw new Error(`Unsupported TOML array value: ${raw}`);
   return items;
@@ -394,7 +408,7 @@ function parseValue(
   | number
   | boolean
   | string[]
-  | Array<StatusStateConfig | MeterStateConfig>
+  | Array<StatusStateConfig | MeterStateConfig | GitStateConfig>
   | Record<string, unknown> {
   const trimmed = raw.trim();
   if (trimmed === 'true') return true;
@@ -415,7 +429,7 @@ function assertSegmentType(value: unknown): asserts value is StatusbarSegmentTyp
 }
 
 function setMeterStateNumber(
-  state: Partial<StatusStateConfig & MeterStateConfig>,
+  state: Partial<StatusStateConfig & MeterStateConfig & GitStateConfig>,
   key: string,
   value: number
 ): void {
@@ -429,6 +443,16 @@ function setMeterStateNumber(
     default:
       throw new Error(`Unsupported meter state key: ${key}`);
   }
+}
+
+function setGitStateId(
+  state: Partial<StatusStateConfig & MeterStateConfig & GitStateConfig>,
+  value: string
+): void {
+  if (!GIT_STATE_IDS.has(value)) {
+    throw new Error(`Unsupported git state id: ${value}`);
+  }
+  state.id = value;
 }
 
 function setStatusStateString(

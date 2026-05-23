@@ -9,6 +9,7 @@ import {
   DEFAULT_ACTIVITY_FIELD,
   config,
   type StatusbarSegmentConfig,
+  type GitStateConfig,
   type MeterStateConfig,
   type StatusStateConfig,
 } from './config.js';
@@ -300,7 +301,13 @@ function renderGitSegment(segment: StatusbarSegmentConfig, state: StatusbarRende
   if (!git) return '';
 
   const template = segment.template ?? ' {remote_icon}{branch_icon}{branch} ';
-  return renderTextSegment(segment, renderTemplate(template, gitTokens(git, segment)));
+  const stateConfig = gitState(git, segment);
+  const displaySegment = {
+    ...segment,
+    fg: stateConfig?.fg ?? segment.fg,
+    bg: stateConfig?.bg ?? segment.bg,
+  };
+  return renderTextSegment(displaySegment, renderTemplate(template, gitTokens(git, segment)));
 }
 
 function renderTemplate(template: string, tokens: TemplateTokens): string {
@@ -339,7 +346,33 @@ function gitTokens(git: GitSnapshot, segment: StatusbarSegmentConfig): TemplateT
     service_icon: git.serviceIcon,
     remote_icon: remoteIcon,
     remote: git.remote,
+    staged: git.staged,
+    unstaged: git.unstaged,
+    ahead: git.ahead,
+    behind: git.behind,
   };
+}
+
+function gitState(git: GitSnapshot, segment: StatusbarSegmentConfig): GitStateConfig | undefined {
+  return (segment.states ?? []).find(
+    (stateConfig): stateConfig is GitStateConfig =>
+      isGitStateConfig(stateConfig) && gitStateMatches(git, stateConfig)
+  );
+}
+
+function gitStateMatches(git: GitSnapshot, stateConfig: GitStateConfig): boolean {
+  switch (stateConfig.id) {
+    case 'unstaged':
+      return git.unstaged;
+    case 'staged':
+      return git.staged;
+    case 'ahead':
+      return git.ahead > 0;
+    case 'behind':
+      return git.behind > 0;
+    default:
+      return false;
+  }
 }
 
 function safeEvaluateStatusbarExpression(
@@ -529,7 +562,7 @@ function meterStateMatches(value: number, stateConfig: MeterStateConfig): boolea
 }
 
 function isMeterStateConfig(
-  stateConfig: StatusStateConfig | MeterStateConfig
+  stateConfig: StatusStateConfig | MeterStateConfig | GitStateConfig
 ): stateConfig is MeterStateConfig {
   return (
     ('gt' in stateConfig && typeof stateConfig.gt === 'number') ||
@@ -539,8 +572,14 @@ function isMeterStateConfig(
   );
 }
 
+function isGitStateConfig(
+  stateConfig: StatusStateConfig | MeterStateConfig | GitStateConfig
+): stateConfig is GitStateConfig {
+  return 'id' in stateConfig && typeof stateConfig.id === 'string';
+}
+
 function isStatusStateConfig(
-  stateConfig: StatusStateConfig | MeterStateConfig
+  stateConfig: StatusStateConfig | MeterStateConfig | GitStateConfig
 ): stateConfig is StatusStateConfig {
   return 'name' in stateConfig && typeof stateConfig.name === 'string';
 }
