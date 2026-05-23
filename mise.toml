@@ -1,5 +1,5 @@
-[tasks.deploy]
-description = "Install pi-bar status bar extension into pi global settings"
+[tasks.dev-deploy]
+description = "For dev only. Install pi-bar from local repo."
 run = """
 pi install ./index.ts
 mkdir -p "${HOME}/.pi/pi-bar"
