@@ -370,8 +370,8 @@ function gitStateMatches(git: GitSnapshot, stateConfig: GitStateConfig): boolean
       return git.ahead > 0;
     case 'behind':
       return git.behind > 0;
-    case 'synced':
-      return git.hasUpstream && git.ahead === 0 && git.behind === 0;
+    case 'default':
+      return git.ahead === 0 && git.behind === 0;
     default:
       return false;
   }

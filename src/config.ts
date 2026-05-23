@@ -18,7 +18,13 @@ type MeterStateNumberKey = keyof Pick<MeterStateConfig, 'gt' | 'gte' | 'lt' | 'l
 
 const STATUS_STATE_STRING_KEYS = new Set<string>(['name', 'match', 'eval', 'template', 'fg', 'bg']);
 
-const GIT_STATE_IDS = new Set<string>(['unstaged', 'staged', 'ahead', 'behind', 'synced']);
+const GIT_STATE_IDS = new Set<string>([
+  'unstaged',
+  'staged',
+  'ahead',
+  'behind',
+  'default',
+]);
 
 const METER_STATE_NUMBER_KEYS: readonly MeterStateNumberKey[] = [
   'gt',
