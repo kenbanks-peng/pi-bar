@@ -66,17 +66,29 @@ that file.
 ```toml
 [[statusbar.segments]]
 type = "value"
-eval = "model?.id ?? 'no model'"
+template = "{model}"
+empty_text = "no model"
 fg = "text_fg"
 bg = "model_bg"
 ```
 
 Segment types:
 
-- `value` — text from `eval`
+- `value` — text from `template`
 - `meter` — numeric value with threshold colors
 - `status` — pi extension status, like MCP or LSP
 - `activity` — tool activity / working spinner
+
+`template` replaces `{tokens}` with values for that segment type. Tokens are scoped per type, so `{value}` in a `meter` segment is not the same as `{value}` in an `activity` segment.
+
+Template tokens:
+
+- `value`: `{value}` / `{model}` = full model id or `empty_text`, `{short_model}` = model id after the final `/`, `{thinking}` = current thinking level.
+- `meter`: `{value}` = raw numeric meter value, `{percent}` = rounded value, `{context_window}` = human-readable model context window.
+- `status`: `{value}` / `{text}` = normalized status text, `{key}` = status key, plus numeric tokens parsed from status text such as `{errors}` or `{warnings}`. MCP statuses also expose `{servers}` for the `connected/total` count.
+- `activity`: `{source}` = `tools` or `streaming`, `{spinner}` = current spinner frame, `{tools}` = comma-separated tool names, `{streaming}` = streaming state, `{value}` = source display value.
+
+`eval`, `collapsed_eval`, and state-level `eval` still work for backwards compatibility. Prefer `template` and `collapsed_template` for new configs.
 
 Status segments can set `ignore = ["regex"]` to skip matching status text. This is useful on `key = "*"` catch-all segments when a known status should not be rendered.
 
@@ -84,10 +96,10 @@ Status segments can set `ignore = ["regex"]` to skip matching status text. This 
 
 pi-bar supports optional configuration attributes to gracefully scale down the status bar on constrained terminal widths instead of truncating abruptly:
 
-- A segment is eligible for collapse when it sets either `collapse_order` or `collapsed_eval`.
+- A segment is eligible for collapse when it sets `collapse_order`, `collapsed_template`, or `collapsed_eval`.
 - `collapse_order`: integer group number for responsive collapse order. `1` is the first group collapsed; higher groups are kept longer.
-- `collapsed_eval`: alternative JS expression evaluated when the segment is collapsed. When `collapsed_eval` is set without `collapse_order`, the segment collapses with order `1`.
-- If `collapse_order` is set without `collapsed_eval`, the segment is hidden when its collapse order comes up.
+- `collapsed_template`: alternative template rendered when the segment is collapsed. When `collapsed_template` is set without `collapse_order`, the segment collapses with order `1`.
+- If `collapse_order` is set without `collapsed_template` or `collapsed_eval`, the segment is hidden when its collapse order comes up.
 
 #### Example Config
 
@@ -96,15 +108,15 @@ pi-bar supports optional configuration attributes to gracefully scale down the s
 [[statusbar.segments]]
 type = "meter"
 value_eval = "ctx.getContextUsage()?.percent ?? 0"
-eval = "`${Math.round(value)}% of ${humanReadable(model?.contextWindow)}`"
+template = "{percent}% of {context_window}"
 fg = "text_fg"
 collapse_order = 4
-collapsed_eval = "`${Math.round(value)}%`"
+collapsed_template = "{percent}%"
 
 # An early-collapsing thinking indicator that hides entirely when space is limited
 [[statusbar.segments]]
 type = "value"
-eval = "pi.getThinkingLevel()"
+template = "{thinking}"
 show_if = "model?.reasoning"
 fg = "text_fg"
 bg = "thinking_bg"
@@ -114,9 +126,9 @@ collapse_order = 2
 [[statusbar.segments]]
 type = "status"
 key = "whatsapp"
-eval = "'  '"
+template = "  "
 fg = "text_fg"
-collapsed_eval = "' WA '"
+collapsed_template = " WA "
 
 # A last-collapsing active tool spinner that collapses to just the spinner glyph
 [[statusbar.segments]]
@@ -124,8 +136,8 @@ type = "activity"
 fg = "activity_fg"
 bg = "activity_bg"
 min_width = 11
-eval = "`${activity.spinner} ${activity.value}`"
-collapsed_eval = "activity.spinner"
+template = "{spinner} {value}"
+collapsed_template = "{spinner}"
 collapse_order = 5
 ```
 
