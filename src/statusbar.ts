@@ -3,6 +3,7 @@
  */
 
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
+import { basename } from 'path';
 
 import { renderSegment, visualLength } from './ansi.js';
 import {
@@ -232,6 +233,8 @@ function renderStatusbarSegment(
       return renderActivitySegment(state, activeSegment, ctx, pi);
     case 'git':
       return renderGitSegment(activeSegment, state);
+    case 'dir':
+      return renderDirSegment(activeSegment, ctx);
   }
 }
 
@@ -310,6 +313,11 @@ function renderGitSegment(segment: StatusbarSegmentConfig, state: StatusbarRende
   return renderTextSegment(displaySegment, renderTemplate(template, gitTokens(git, segment)));
 }
 
+function renderDirSegment(segment: StatusbarSegmentConfig, ctx: ExtensionContext): string {
+  const template = segment.template ?? '  {dir}';
+  return renderTextSegment(segment, renderTemplate(template, dirTokens(ctx)));
+}
+
 function renderTemplate(template: string, tokens: TemplateTokens): string {
   return template.replace(/\{([A-Za-z][A-Za-z0-9_]*)\}/g, (_match, token: string) => {
     const value = tokens[token];
@@ -353,6 +361,12 @@ function gitTokens(git: GitSnapshot, segment: StatusbarSegmentConfig): TemplateT
   };
 }
 
+function dirTokens(ctx: ExtensionContext): TemplateTokens {
+  const path = ctx.cwd;
+  const dir = basename(path) || path;
+  return { value: dir, dir, path };
+}
+
 function gitState(git: GitSnapshot, segment: StatusbarSegmentConfig): GitStateConfig | undefined {
   return (segment.states ?? []).find(
     (stateConfig): stateConfig is GitStateConfig =>
@@ -370,8 +384,6 @@ function gitStateMatches(git: GitSnapshot, stateConfig: GitStateConfig): boolean
       return git.ahead > 0;
     case 'behind':
       return git.behind > 0;
-    case 'default':
-      return git.ahead === 0 && git.behind === 0;
     default:
       return false;
   }

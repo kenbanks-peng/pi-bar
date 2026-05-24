@@ -23,7 +23,6 @@ const GIT_STATE_IDS = new Set<string>([
   'staged',
   'ahead',
   'behind',
-  'default',
 ]);
 
 const METER_STATE_NUMBER_KEYS: readonly MeterStateNumberKey[] = [
@@ -55,7 +54,7 @@ const STATUSBAR_SEGMENT_NUMBER_KEYS = new Set<string>([
 ]);
 
 
-type StatusbarSegmentType = 'value' | 'meter' | 'status' | 'activity' | 'git';
+type StatusbarSegmentType = 'value' | 'meter' | 'status' | 'activity' | 'git' | 'dir';
 
 export interface MeterStateConfig {
   gt?: number;
@@ -158,6 +157,7 @@ function defaultColors(): Record<string, string> {
     model_bg: '#005b95',
     thinking_bg: '#005b95',
     git_bg: '#313244',
+    dir_bg: '#313244',
     lsp_bg: '#313244',
     activity_bg: '#313244',
     activity_fg: '#2dd4bf',
@@ -189,6 +189,14 @@ function defaultConfig(): PiBarConfig {
           bg: 'thinking_bg',
           show_if: 'model?.reasoning',
           collapse_order: 2,
+        },
+        {
+          type: 'dir',
+          template: '  {dir}',
+          fg: 'text_fg',
+          bg: 'dir_bg',
+          collapse_order: 3,
+          collapsed_template: '  ',
         },
         {
           type: 'meter',
@@ -426,7 +434,7 @@ function parseValue(
 }
 
 function assertSegmentType(value: unknown): asserts value is StatusbarSegmentType {
-  const valid = ['value', 'meter', 'status', 'activity', 'git'];
+  const valid = ['value', 'meter', 'status', 'activity', 'git', 'dir'];
   if (typeof value !== 'string' || !valid.includes(value)) {
     throw new Error(
       `Unsupported status bar segment type: ${String(value)}. Supported: ${valid.join(', ')}`

@@ -76,6 +76,7 @@ Segment types:
 
 - `value` — text from `template`
 - `meter` — numeric value with threshold colors
+- `dir` — current working directory
 - `status` — pi extension status, like MCP or LSP
 - `activity` — tool activity / working spinner
 
@@ -84,7 +85,8 @@ Segment types:
 Template tokens:
 
 - `value`: `{value}` / `{model}` = full model id or `empty_text`, `{short_model}` = model id after the final `/`, `{thinking}` = current thinking level.
-- `git`: `{remote_icon}` = remote service icon, `{branch_icon}` = branch icon, `{branch}` = current branch, `{staged}` / `{unstaged}` = dirty booleans, `{ahead}` / `{behind}` = upstream counts, `{service}` = remote service, `{service_icon}` = default remote service icon, `{remote}` = origin URL. Set `icons = { remote = "...", branch = "..." }` on a git segment to override icons. Git `states` support `id = "unstaged"`, `id = "staged"`, `id = "ahead"`, `id = "behind"`, and `id = "default"` with `fg`/`bg` colors.
+- `dir`: `{value}` / `{dir}` = current directory name, `{path}` = full current working directory.
+- `git`: `{remote_icon}` = remote service icon, `{branch_icon}` = branch icon, `{branch}` = current branch, `{staged}` / `{unstaged}` = dirty booleans, `{ahead}` / `{behind}` = upstream counts, `{service}` = remote service, `{service_icon}` = default remote service icon, `{remote}` = origin URL. Set `icons = { remote = "...", branch = "..." }` on a git segment to override icons. Git `states` support `id = "unstaged"`, `id = "staged"`, `id = "ahead"`, and `id = "behind"` with `fg`/`bg` colors. The segment `bg` is used when no state matches.
 - `meter`: `{value}` = raw numeric meter value, `{percent}` = rounded value, `{context_window}` = human-readable model context window.
 - `status`: `{value}` / `{text}` = normalized status text, `{key}` = status key, plus numeric tokens parsed from status text such as `{errors}` or `{warnings}`. MCP statuses also expose `{servers}` for the `connected/total` count.
 - `activity`: `{source}` = `tools` or `streaming`, `{spinner}` = current spinner frame, `{tools}` = comma-separated tool names, `{streaming}` = streaming state, `{value}` = source display value.
