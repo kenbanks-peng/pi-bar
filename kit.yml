@@ -53,9 +53,9 @@ packages:
   pi-catppuccin.ts:
     source: ../../../Software/DevBox/tools/ai/plugins/pi/pi-catppuccin/pi-catppuccin.ts
     rating: core
-  kanboard:
-    source: npm:@pi-unipi/kanboard
-    rating: useful
   pi-resource-center:
     source: npm:pi-resource-center
+    rating: useful
+  pi-kanban:
+    source: npm:pi-kanban
     rating: useful
