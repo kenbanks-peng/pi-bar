@@ -156,7 +156,7 @@ function defaultColors(): Record<string, string> {
     text_fg: '#cdd6f4',
     model_bg: '#005b95',
     thinking_bg: '#005b95',
-    git_bg: '#313244',
+    git_bg: '#006b1d',
     dir_bg: '#313244',
     lsp_bg: '#313244',
     activity_bg: '#313244',
