@@ -43,6 +43,8 @@ const STATUSBAR_SEGMENT_STRING_KEYS = new Set<string>([
   'show_if',
   'key',
   'format',
+  'count_style',
+  'count_separator',
   'collapsed_eval',
   'collapsed_template',
 ]);
@@ -83,6 +85,13 @@ export interface GitIconConfig {
   remote?: string;
 }
 
+export interface GitCountLabelsConfig {
+  staged?: string;
+  modified?: string;
+  untracked?: string;
+  conflicts?: string;
+}
+
 export interface StatusbarSegmentConfig {
   type: StatusbarSegmentType;
   fg?: string;
@@ -95,6 +104,9 @@ export interface StatusbarSegmentConfig {
   show_if?: string;
   values?: Partial<Record<ActivitySource, string>>;
   icons?: GitIconConfig;
+  count_style?: string;
+  count_separator?: string;
+  count_labels?: GitCountLabelsConfig;
   sources?: ActivitySource[];
   spinner?: ActivitySpinnerConfig;
   min_duration_ms?: number;
@@ -503,6 +515,8 @@ function setStatusBarSegmentString(
     case 'show_if':
     case 'key':
     case 'format':
+    case 'count_style':
+    case 'count_separator':
     case 'collapsed_eval':
     case 'collapsed_template':
       segment[key] = value;
@@ -579,6 +593,23 @@ function parseGitIcons(value: unknown): GitIconConfig {
   return icons;
 }
 
+function parseGitCountLabels(value: unknown): GitCountLabelsConfig {
+  if (!isRecord(value))
+    throw new Error('Status bar segment count_labels must be an inline table');
+
+  const labels: GitCountLabelsConfig = {};
+  for (const [key, fieldValue] of Object.entries(value)) {
+    if (key !== 'staged' && key !== 'modified' && key !== 'untracked' && key !== 'conflicts') {
+      throw new Error(`Unsupported count_labels key: ${key}`);
+    }
+    if (typeof fieldValue !== 'string') {
+      throw new Error(`Status bar segment count_labels.${key} must be a string`);
+    }
+    labels[key] = fieldValue;
+  }
+  return labels;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -631,6 +662,11 @@ function assignStatusbarSegmentValue(
 
   if (key === 'icons') {
     segment.icons = parseGitIcons(value);
+    return;
+  }
+
+  if (key === 'count_labels') {
+    segment.count_labels = parseGitCountLabels(value);
     return;
   }
 

@@ -356,9 +356,51 @@ function gitTokens(git: GitSnapshot, segment: StatusbarSegmentConfig): TemplateT
     remote: git.remote,
     staged: git.staged,
     unstaged: git.unstaged,
+    staged_count: git.stagedCount,
+    modified_count: git.modifiedCount,
+    untracked_count: git.untrackedCount,
+    conflict_count: git.conflictCount,
     ahead: git.ahead,
     behind: git.behind,
+    counts: formatGitCounts(git, segment),
   };
+}
+
+interface GitCountLabels {
+  staged: string;
+  modified: string;
+  untracked: string;
+  conflicts: string;
+}
+
+// Built-in notation presets. `symbol` mirrors git porcelain short codes;
+// `letter` is a more literal, spelled-out style. Either can be overridden
+// per-label via the segment's `count_labels` inline table.
+const GIT_COUNT_PRESETS: Record<string, GitCountLabels> = {
+  symbol: { staged: '+', modified: '~', untracked: '?', conflicts: '!' },
+  letter: { staged: 'S: ', modified: 'M: ', untracked: 'U: ', conflicts: '!: ' },
+};
+
+function gitCountLabels(segment: StatusbarSegmentConfig): GitCountLabels {
+  const preset = GIT_COUNT_PRESETS[segment.count_style ?? 'symbol'] ?? GIT_COUNT_PRESETS.symbol;
+  const custom = segment.count_labels ?? {};
+  return {
+    staged: custom.staged ?? preset.staged,
+    modified: custom.modified ?? preset.modified,
+    untracked: custom.untracked ?? preset.untracked,
+    conflicts: custom.conflicts ?? preset.conflicts,
+  };
+}
+
+function formatGitCounts(git: GitSnapshot, segment: StatusbarSegmentConfig): string {
+  const labels = gitCountLabels(segment);
+  const separator = segment.count_separator ?? ' ';
+  const parts: string[] = [];
+  if (git.stagedCount > 0) parts.push(`${labels.staged}${git.stagedCount}`);
+  if (git.modifiedCount > 0) parts.push(`${labels.modified}${git.modifiedCount}`);
+  if (git.untrackedCount > 0) parts.push(`${labels.untracked}${git.untrackedCount}`);
+  if (git.conflictCount > 0) parts.push(`${labels.conflicts}${git.conflictCount}`);
+  return parts.length > 0 ? `${separator}${parts.join(separator)}` : '';
 }
 
 function dirTokens(ctx: ExtensionContext): TemplateTokens {
