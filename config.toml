@@ -106,7 +106,9 @@ collapsed_template = "{percent}%"
 
 [[statusbar.segments]]
 type = "git"
-template = "{remote_icon} {branch_icon} {branch}"
+template = "{remote_icon} {branch_icon} {branch}{counts}"
+count_style = "symbol"
+count_separator = " "
 fg = "text_fg"
 bg = "git_bg"
 icons = { remote = "", branch = "" }
