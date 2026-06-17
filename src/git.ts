@@ -15,6 +15,10 @@ export interface GitSnapshot {
   staged: boolean;
   text: string;
   unstaged: boolean;
+  stagedCount: number;
+  modifiedCount: number;
+  untrackedCount: number;
+  conflictCount: number;
 }
 
 const GITHUB = '';
@@ -89,10 +93,27 @@ function snapshotKey(snapshot: GitSnapshot | undefined): string {
     snapshot.ahead,
     snapshot.behind,
     snapshot.hasUpstream,
+    snapshot.stagedCount,
+    snapshot.modifiedCount,
+    snapshot.untrackedCount,
+    snapshot.conflictCount,
   ].join('|');
 }
 
-function readGitStatus(cwd: string): Pick<GitSnapshot, 'staged' | 'unstaged' | 'ahead' | 'behind' | 'hasUpstream'> {
+type GitStatusCounts = Pick<
+  GitSnapshot,
+  | 'staged'
+  | 'unstaged'
+  | 'ahead'
+  | 'behind'
+  | 'hasUpstream'
+  | 'stagedCount'
+  | 'modifiedCount'
+  | 'untrackedCount'
+  | 'conflictCount'
+>;
+
+function readGitStatus(cwd: string): GitStatusCounts {
   try {
     const output = execFileSync('git', ['-C', cwd, 'status', '--porcelain=v2', '--branch'], {
       encoding: 'utf8',
@@ -100,16 +121,28 @@ function readGitStatus(cwd: string): Pick<GitSnapshot, 'staged' | 'unstaged' | '
     });
     return parseGitStatus(output);
   } catch {
-    return { staged: false, unstaged: false, ahead: 0, behind: 0, hasUpstream: false };
+    return {
+      staged: false,
+      unstaged: false,
+      ahead: 0,
+      behind: 0,
+      hasUpstream: false,
+      stagedCount: 0,
+      modifiedCount: 0,
+      untrackedCount: 0,
+      conflictCount: 0,
+    };
   }
 }
 
-function parseGitStatus(output: string): Pick<GitSnapshot, 'staged' | 'unstaged' | 'ahead' | 'behind' | 'hasUpstream'> {
-  let staged = false;
-  let unstaged = false;
+function parseGitStatus(output: string): GitStatusCounts {
   let ahead = 0;
   let behind = 0;
   let hasUpstream = false;
+  let stagedCount = 0;
+  let modifiedCount = 0;
+  let untrackedCount = 0;
+  let conflictCount = 0;
 
   for (const line of output.split(/\r?\n/)) {
     if (line.startsWith('# branch.upstream ')) {
@@ -126,25 +159,37 @@ function parseGitStatus(output: string): Pick<GitSnapshot, 'staged' | 'unstaged'
     }
 
     if (line.startsWith('? ')) {
-      unstaged = true;
+      untrackedCount += 1;
       continue;
     }
 
     if (line.startsWith('u ')) {
-      staged = true;
-      unstaged = true;
+      conflictCount += 1;
       continue;
     }
 
     if (line.startsWith('1 ') || line.startsWith('2 ')) {
       const indexStatus = line[2];
       const worktreeStatus = line[3];
-      if (indexStatus && indexStatus !== '.') staged = true;
-      if (worktreeStatus && worktreeStatus !== '.') unstaged = true;
+      if (indexStatus && indexStatus !== '.') stagedCount += 1;
+      if (worktreeStatus && worktreeStatus !== '.') modifiedCount += 1;
     }
   }
 
-  return { staged, unstaged, ahead, behind, hasUpstream };
+  const staged = stagedCount > 0 || conflictCount > 0;
+  const unstaged = modifiedCount > 0 || untrackedCount > 0 || conflictCount > 0;
+
+  return {
+    staged,
+    unstaged,
+    ahead,
+    behind,
+    hasUpstream,
+    stagedCount,
+    modifiedCount,
+    untrackedCount,
+    conflictCount,
+  };
 }
 
 function findGitDir(startDir: string): string | undefined {
