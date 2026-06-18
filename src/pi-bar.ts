@@ -14,12 +14,14 @@ import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import type { TUI } from '@earendil-works/pi-tui';
 import { truncateToWidth } from '@earendil-works/pi-tui';
 
+import { config } from './config.js';
 import { GitSnapshotProvider } from './git.js';
 import { buildStatusbarSegments, firstActivityField } from './statusbar.js';
 
 export default function (pi: ExtensionAPI) {
   let tui: TUI | null = null;
   const requestRender = () => tui?.requestRender();
+  const gitEnabled = config.statusbar.segments.some((segment) => segment.type === 'git');
   const gitSnapshots = new GitSnapshotProvider(requestRender);
 
   // ── Spinner state ────────────────────────────────────────────────────────
@@ -165,7 +167,7 @@ export default function (pi: ExtensionAPI) {
               displayedTools,
               displayedStreaming,
               statuses: statusbarData.getExtensionStatuses(),
-              git: gitSnapshots.current(ctx.cwd),
+              git: gitEnabled ? gitSnapshots.current(ctx.cwd) : undefined,
             },
             width
           );
@@ -174,7 +176,7 @@ export default function (pi: ExtensionAPI) {
       };
     };
 
-    gitSnapshots.start(ctx.cwd);
+    if (gitEnabled) gitSnapshots.start(ctx.cwd);
     statusbarSetter.call(ctx.ui, statusbarFactory);
   });
 }

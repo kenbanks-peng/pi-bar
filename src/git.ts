@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync } from 'fs';
-import { execFileSync } from 'child_process';
+import { execFile } from 'child_process';
 import { dirname, isAbsolute, join, resolve } from 'path';
+import { promisify } from 'util';
 
 export interface GitSnapshot {
   ahead: number;
@@ -29,18 +30,20 @@ const GIT = '';
 const BRANCH = '';
 
 const REFRESH_INTERVAL_MS = 1000;
+const execFileAsync = promisify(execFile);
 
 export class GitSnapshotProvider {
   private readonly snapshots = new Map<string, GitSnapshot | undefined>();
   private timer: ReturnType<typeof setInterval> | null = null;
   private cwd: string | null = null;
+  private refreshing = false;
 
   constructor(private readonly onChange: () => void) {}
 
   start(cwd: string): void {
     this.cwd = cwd;
-    this.refresh();
-    this.timer = setInterval(() => this.refresh(), REFRESH_INTERVAL_MS);
+    void this.refresh();
+    this.timer = setInterval(() => void this.refresh(), REFRESH_INTERVAL_MS);
   }
 
   stop(): void {
@@ -49,6 +52,7 @@ export class GitSnapshotProvider {
       this.timer = null;
     }
     this.cwd = null;
+    this.refreshing = false;
     this.snapshots.clear();
   }
 
@@ -56,19 +60,29 @@ export class GitSnapshotProvider {
     return this.snapshots.get(cwd);
   }
 
-  private refresh(): void {
+  private async refresh(): Promise<void> {
+    if (this.refreshing) return;
+
     const cwd = this.cwd;
     if (!cwd) return;
 
-    const previous = snapshotKey(this.snapshots.get(cwd));
-    const next = readGitSnapshot(cwd);
-    this.snapshots.set(cwd, next);
+    this.refreshing = true;
+    try {
+      const previous = snapshotKey(this.snapshots.get(cwd));
+      const next = await readGitSnapshot(cwd);
 
-    if (previous !== snapshotKey(next)) this.onChange();
+      if (this.cwd !== cwd) return;
+
+      this.snapshots.set(cwd, next);
+
+      if (previous !== snapshotKey(next)) this.onChange();
+    } finally {
+      this.refreshing = false;
+    }
   }
 }
 
-function readGitSnapshot(cwd: string): GitSnapshot | undefined {
+async function readGitSnapshot(cwd: string): Promise<GitSnapshot | undefined> {
   const gitDir = findGitDir(cwd);
   if (!gitDir) return undefined;
 
@@ -79,7 +93,7 @@ function readGitSnapshot(cwd: string): GitSnapshot | undefined {
   const { service, serviceIcon } = remoteService(remote);
   const branchIcon = BRANCH;
   const text = `${serviceIcon}${branchIcon}${branch}`;
-  const status = readGitStatus(cwd);
+  const status = await readGitStatus(cwd);
 
   return { branch, branchIcon, gitDir, remote, service, serviceIcon, text, ...status };
 }
@@ -113,13 +127,13 @@ type GitStatusCounts = Pick<
   | 'conflictCount'
 >;
 
-function readGitStatus(cwd: string): GitStatusCounts {
+async function readGitStatus(cwd: string): Promise<GitStatusCounts> {
   try {
-    const output = execFileSync('git', ['-C', cwd, 'status', '--porcelain=v2', '--branch'], {
+    const { stdout } = await execFileAsync('git', ['-C', cwd, 'status', '--porcelain=v2', '--branch'], {
       encoding: 'utf8',
       timeout: 500,
     });
-    return parseGitStatus(output);
+    return parseGitStatus(stdout);
   } catch {
     return {
       staged: false,
