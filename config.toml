@@ -149,6 +149,17 @@ collapse_order = 2
 
 [[statusbar.segments]]
 type = "status"
+key = "headroom"
+eval = "` 󰣈 ${String(state.status.text).replace(/\\bHeadroom\\s*/, '').trim()} `"
+fg = "text_fg"
+states = [
+  { name = "connected", match = "✓", bg = "ok" },
+  { name = "default", bg = "alert" },
+]
+collapse_order = 2
+
+[[statusbar.segments]]
+type = "status"
 key = "mcp"
 template = " 󰛳 {servers} "
 fg = "text_fg"
