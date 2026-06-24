@@ -17,6 +17,7 @@ git_behind_bg = "#6b3fa0"
 lsp_bg = "#313244"
 activity_bg = "#313244"
 activity_fg = "#2dd4bf"
+ponytail_bg = "#006b1d"
 ok = "#006b1d"
 warn = "#a17a00"
 alert = "#972e2d"
@@ -171,6 +172,14 @@ states = [
   { name = "default", template = " 󰛳 MCP ", bg = "warn" },
 ]
 collapse_order = 2
+
+[[statusbar.segments]]
+type = "status"
+key = "ponytail"
+eval = "` 🐴 ${(String(state.status.text).match(/\\b(lite|full|ultra|off)\\b/i)?.[1] ?? '').toLowerCase()} `"
+fg = "text_fg"
+states = [{ name = "default", bg = "ponytail_bg" }]
+collapse_order = 1
 
 # catch all for unspecified status keys
 [[statusbar.segments]]
