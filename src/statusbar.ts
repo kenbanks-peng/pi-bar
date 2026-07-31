@@ -339,6 +339,7 @@ function valueTokens(
     value: modelId,
     model: modelId,
     short_model: shortModel,
+    provider: ctx.model?.provider ?? '',
     thinking: pi.getThinkingLevel(),
   };
 }
