@@ -185,7 +185,7 @@ collapse_order = 1
 [[statusbar.segments]]
 type = "status"
 key = "unipi-memory"
-template = " {text} "
+eval = "(() => { const text = String(state.status.text); const match = text.match(/(\\d+)p\\/?(\\d+)all/); return match ? ` 󰆼 ${match[1]}p ${match[2]}all${text.includes('⚠') ? ' ⚠' : ''} ` : ` 󰆼 ${text} `; })()"
 fg = "text_fg"
 states = [
   { name = "model_changed", match = "⚠", bg = "warn" },
