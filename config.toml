@@ -184,11 +184,13 @@ collapse_order = 1
 
 [[statusbar.segments]]
 type = "status"
-key = "unipi-memory"
-eval = "(() => { const text = String(state.status.text); const match = text.match(/(\\d+)p\\/?(\\d+)all/); return match ? ` 󰆼 ${match[1]}p ${match[2]}all${text.includes('⚠') ? ' ⚠' : ''} ` : ` 󰆼 ${text} `; })()"
+key = "memctx"
+eval = "(() => { const text = String(state.status.text).replace(/^🧠\\s*/, ''); const parts = text.split(/\\s*·\\s*/).map((part) => part.trim()).filter(Boolean); const pack = parts[0] || 'memctx'; const gateway = parts[1] || ''; const memory = parts[2] || ''; const marker = /check source/i.test(gateway) ? '!' : /partial/i.test(gateway) ? '◐' : /fallback/i.test(gateway) ? '↯' : /ready/i.test(gateway) ? '✓' : /off/i.test(gateway) ? 'off' : ''; const hits = memory.match(/^(\\d+)\\s+memory hits?/i)?.[1] ?? ''; return ` 󰆼 ${pack}${marker ? ` ${marker}` : ''}${hits ? ` ${hits}` : ''} `; })()"
 fg = "text_fg"
 states = [
-  { name = "model_changed", match = "⚠", bg = "warn" },
+  { name = "check_source", match = "check source", bg = "alert" },
+  { name = "partial", match = "partial|fallback|timeout", bg = "warn" },
+  { name = "ready", match = "ready", bg = "ok" },
   { name = "default", bg = "memory_bg" },
 ]
 collapse_order = 1
