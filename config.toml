@@ -17,6 +17,7 @@ git_behind_bg = "#6b3fa0"
 lsp_bg = "#313244"
 activity_bg = "#313244"
 activity_fg = "#2dd4bf"
+sbx_bg = "#313244"
 ponytail_bg = "#006b1d"
 memory_bg = "#6b3fa0"
 ok = "#006b1d"
@@ -192,6 +193,19 @@ states = [
   { name = "partial", match = "partial|fallback|timeout", bg = "warn" },
   { name = "ready", match = "ready", bg = "ok" },
   { name = "default", bg = "memory_bg" },
+]
+collapse_order = 1
+
+[[statusbar.segments]]
+type = "status"
+key = "pi-sbx"
+template = " 󰆧 sbx "
+fg = "text_fg"
+states = [
+  { name = "error", match = "error|failed", bg = "alert" },
+  { name = "fallback", match = "disabled|unavailable|fallback|host", bg = "warn" },
+  { name = "active", match = "enabled|active|sandbox", bg = "ok" },
+  { name = "default", bg = "sbx_bg" },
 ]
 collapse_order = 1
 
