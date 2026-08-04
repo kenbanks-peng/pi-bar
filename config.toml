@@ -202,9 +202,8 @@ key = "pi-sbx"
 template = " 󰆧 sbx "
 fg = "text_fg"
 states = [
-  { name = "error", match = "error|failed", bg = "alert" },
-  { name = "fallback", match = "disabled|unavailable|fallback|host", bg = "warn" },
-  { name = "active", match = "enabled|active|sandbox", bg = "ok" },
+  { name = "fallback", match = "^sbx:\\s*host fallback$", bg = "warn" },
+  { name = "active", match = "^sbx:\\s*(?!host fallback\\b).+", bg = "ok" },
   { name = "default", bg = "sbx_bg" },
 ]
 collapse_order = 1
