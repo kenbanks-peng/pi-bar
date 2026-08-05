@@ -212,7 +212,7 @@ function defaultConfig(): PiBarConfig {
         },
         {
           type: 'value',
-          template: ' 󰆧 ',
+          template: ' 󰆧 sbx ',
           fg: 'text_fg',
           bg: 'ok',
           show_if: "process.env.SBX_SANDBOX === '1'",
