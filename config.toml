@@ -197,15 +197,11 @@ states = [
 collapse_order = 1
 
 [[statusbar.segments]]
-type = "status"
-key = "pi-sbx"
-template = " 󰆧 sbx "
+type = "value"
+template = " 󰆧 "
 fg = "text_fg"
-states = [
-  { name = "fallback", match = "^sbx:\\s*host fallback$", bg = "warn" },
-  { name = "active", match = "^sbx:\\s*(?!host fallback\\b).+", bg = "ok" },
-  { name = "default", bg = "sbx_bg" },
-]
+bg = "ok"
+show_if = "process.env.SBX_SANDBOX === '1'"
 collapse_order = 1
 
 # catch all for unspecified status keys

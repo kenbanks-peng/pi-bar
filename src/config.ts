@@ -211,6 +211,14 @@ function defaultConfig(): PiBarConfig {
           collapsed_template: '  ',
         },
         {
+          type: 'value',
+          template: ' 󰆧 ',
+          fg: 'text_fg',
+          bg: 'ok',
+          show_if: "process.env.SBX_SANDBOX === '1'",
+          collapse_order: 1,
+        },
+        {
           type: 'meter',
           template: '{percent}% of {context_window}',
           value_eval: 'ctx.getContextUsage()?.percent ?? 0',
