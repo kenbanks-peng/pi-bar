@@ -53,7 +53,7 @@ alert = "#972e2d"
 # Missing colors fall back to default bg/fg values.
 #
 # Template tokens:
-# - value: {value}, {model}, {short_model}, {thinking}
+# - value: {value}, {provider}, {model}, {short_model}, {thinking}
 # - dir: {value}, {dir}, {path}
 # - git: {remote_icon}, {branch_icon}, {branch}, {staged}, {unstaged}, {ahead}, {behind}, {service}, {service_icon}, {remote}
 # - meter: {value}, {percent}, {context_window}
@@ -78,7 +78,7 @@ collapsed_template = "  "
 
 [[statusbar.segments]]
 type = "value"
-template = " {model}"
+template = " {provider}:{model}"
 empty_text = "no model"
 fg = "text_fg"
 bg = "model_bg"
