@@ -38,7 +38,7 @@ export function buildStatusbarSegments(
   
   // 1. Get all segments that should be shown under normal conditions
   const activeSegments = config.statusbar.segments.filter((segment) =>
-    shouldShowSegment(segment, ctx, pi, state)
+    segment.type === 'status' || shouldShowSegment(segment, ctx, pi, state)
   );
 
   // If no width constraint is specified, render everything fully
@@ -198,7 +198,8 @@ function renderStatusbarSegment(
   explicitlyConfiguredStatusKeys: ReadonlySet<string>,
   isCollapsed = false
 ): string {
-  if (!shouldShowSegment(segment, ctx, pi, state)) return '';
+  // Status conditions need the parsed status and are checked per entry below.
+  if (segment.type !== 'status' && !shouldShowSegment(segment, ctx, pi, state)) return '';
 
   // Create a copy of the segment with collapsed properties overriding normal ones
   const activeSegment = { ...segment, isCollapsed };
@@ -681,6 +682,9 @@ function renderSingleStatusSegment(
   renderState: StatusbarRenderState
 ): string {
   const normalized = normalizeStatus(statusText);
+  const statusContext = parseStatusContext(normalized, segment.key);
+  const scopedState = { ...renderState, status: statusContext };
+  if (!shouldShowSegment(segment, ctx, pi, scopedState)) return '';
   if (isIgnoredStatus(segment, normalized)) return '';
   const statusStates = (segment.states ?? []).filter(isStatusStateConfig);
   const state = statusStates.find(
@@ -692,9 +696,10 @@ function renderSingleStatusSegment(
     segment,
     resolvedState,
     normalized,
+    statusContext,
     ctx,
     pi,
-    renderState
+    scopedState
   );
   if (!text) return '';
 
@@ -725,11 +730,11 @@ function formatStatusSegmentText(
   segment: StatusbarSegmentConfig,
   state: StatusStateConfig | undefined,
   status: string,
+  statusContext: Record<string, number | string | boolean>,
   ctx: ExtensionContext,
   pi: ExtensionAPI,
   renderState: StatusbarRenderState
 ): string {
-  const statusContext = parseStatusContext(status, segment.key);
   const displayConfig: StatusbarSegmentConfig = {
     ...segment,
     template: (segment.collapsed_template !== undefined && segment.template === segment.collapsed_template)
@@ -754,7 +759,7 @@ function formatStatusSegmentText(
         segment: displayConfig,
         ctx,
         pi,
-        state: { ...renderState, status: statusContext },
+        state: renderState,
       }),
       displayConfig
     );

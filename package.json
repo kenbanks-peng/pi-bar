@@ -1,6 +1,6 @@
 {
 	"name": "@npm-ken/pi-bar",
-	"version": "1.7.0",
+	"version": "1.7.1",
 	"description": "Configurable status bar extension for the pi coding agent.",
 	"private": false,
 	"type": "module",
@@ -16,6 +16,7 @@
 	],
 	"scripts": {
 		"deploy": "pi install ./index.ts && mkdir -p \"${HOME}/.pi/pi-bar\" && cp config.toml \"${HOME}/.pi/pi-bar/config.toml\" && echo \"Installed pi-bar config to ${HOME}/.pi/pi-bar/config.toml\"",
+		"test": "bun test",
 		"typecheck": "tsc --noEmit",
 		"prepack": "npm run typecheck"
 	},
