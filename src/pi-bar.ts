@@ -112,6 +112,10 @@ export default function (pi: ExtensionAPI) {
   // Force a status bar redraw whenever model or thinking level changes.
   pi.on('model_select', requestRender);
   pi.on('thinking_level_select', requestRender);
+  // Usage can change outside normal turns (summaries and tree navigation).
+  pi.on('session_compact', requestRender);
+  pi.on('session_tree', requestRender);
+  pi.on('agent_end', requestRender);
 
   // turn_start/turn_end bracket the whole assistant turn (including thinking
   // time before the first token), so we use them as the streaming signal.
