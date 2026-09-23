@@ -8,6 +8,7 @@
 text_fg = "#cdd6f4"
 model_bg = "#005b95"
 thinking_bg = "#005b95"
+usage_bg = "#683c9d"
 dir_bg = "#313244"
 git_bg = "#006b1d"
 git_staged_bg = "#005b95"
@@ -30,6 +31,7 @@ alert = "#972e2d"
 # Segment types:
 # - "value": renders template, or empty_text, as colored text.
 # - "meter": evaluates a number, renders text, and applies matching states.
+# - "usage": active-branch token totals (including cache) and estimated cost.
 # - "dir": renders the current working directory segment.
 # - "git": renders branch and remote service from native filesystem reads.
 # - "status": renders a keyed pi status only when present.
@@ -57,6 +59,7 @@ alert = "#972e2d"
 # - dir: {value}, {dir}, {path}
 # - git: {remote_icon}, {branch_icon}, {branch}, {staged}, {unstaged}, {ahead}, {behind}, {service}, {service_icon}, {remote}
 # - meter: {value}, {percent}, {context_window}
+# - usage: {input}, {output}, {cache_read}, {cache_write}, {cost}
 # - status: {value}, {text}, {key}, plus numbers parsed from status text
 # - activity: {source}, {spinner}, {tools}, {streaming}, {value}
 #
@@ -106,6 +109,14 @@ states = [
 ]
 collapse_order = 4
 collapsed_template = "{percent}%"
+
+[[statusbar.segments]]
+type = "usage"
+template = "↑{input} ↓{output} ${cost}"
+fg = "text_fg"
+bg = "usage_bg"
+collapse_order = 3
+collapsed_template = "${cost}"
 
 [[statusbar.segments]]
 type = "git"

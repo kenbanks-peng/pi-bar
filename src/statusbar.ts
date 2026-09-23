@@ -17,6 +17,7 @@ import {
 import { humanReadable } from './format.js';
 import type { GitSnapshot } from './git.js';
 import { color } from './palette.js';
+import { formatUsageTokens, getUsageTotals, type UsageTotals } from './usage.js';
 
 export interface StatusbarRenderState {
   spinnerFrame: number;
@@ -25,6 +26,7 @@ export interface StatusbarRenderState {
   statuses: ReadonlyMap<string, string>;
   status?: Record<string, unknown>;
   git?: GitSnapshot;
+  usage?: UsageTotals;
 }
 
 /** Build the full status bar line from the ordered [[statusbar.segments]] config, with optional responsive collapsing. */
@@ -40,6 +42,11 @@ export function buildStatusbarSegments(
   const activeSegments = config.statusbar.segments.filter((segment) =>
     segment.type === 'status' || shouldShowSegment(segment, ctx, pi, state)
   );
+
+  // Read recorded usage once, shared by full and collapsed renders.
+  if (activeSegments.some((segment) => segment.type === 'usage')) {
+    state = { ...state, usage: getUsageTotals(ctx) };
+  }
 
   // If no width constraint is specified, render everything fully
   if (width === undefined) {
@@ -219,6 +226,8 @@ function renderStatusbarSegment(
   switch (activeSegment.type) {
     case 'value':
       return renderValueSegment(activeSegment, ctx, pi, state);
+    case 'usage':
+      return renderUsageSegment(activeSegment, state.usage!);
     case 'meter':
       return renderMeterSegment(activeSegment, ctx, pi, state);
     case 'status':
@@ -298,6 +307,19 @@ function renderValueSegment(
 
   const value = safeEvaluateStatusbarExpression(expression, { segment, ctx, pi, state });
   return renderTextSegment(segment, stringifySegmentValue(value, segment));
+}
+
+function renderUsageSegment(segment: StatusbarSegmentConfig, usage: UsageTotals): string {
+  return renderTextSegment(segment, renderTemplate(
+    segment.template ?? '↑{input} ↓{output} ${cost}',
+    {
+      input: formatUsageTokens(usage.input),
+      output: formatUsageTokens(usage.output),
+      cache_read: formatUsageTokens(usage.cacheRead),
+      cache_write: formatUsageTokens(usage.cacheWrite),
+      cost: usage.cost.toFixed(2),
+    }
+  ));
 }
 
 function renderGitSegment(segment: StatusbarSegmentConfig, state: StatusbarRenderState): string {

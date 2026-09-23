@@ -76,6 +76,7 @@ Segment types:
 
 - `value` — text from `template`
 - `meter` — numeric value with threshold colors
+- `usage` — cumulative recorded tokens and estimated cost on the active branch
 - `dir` — current working directory
 - `status` — pi extension status, like MCP or LSP
 - `activity` — tool activity / working spinner
@@ -88,12 +89,35 @@ Template tokens:
 - `dir`: `{value}` / `{dir}` = current directory name, `{path}` = full current working directory.
 - `git`: `{remote_icon}` = remote service icon, `{branch_icon}` = branch icon, `{branch}` = current branch, `{staged}` / `{unstaged}` = dirty booleans, `{ahead}` / `{behind}` = upstream counts, `{service}` = remote service, `{service_icon}` = default remote service icon, `{remote}` = origin URL, `{staged_count}` / `{modified_count}` / `{untracked_count}` / `{conflict_count}` = per-type file counts, `{counts}` = zero-suppressed summary of those counts (notation set via `count_style = "symbol"` (default) or `"letter"`, with optional `count_labels = { staged = "...", ... }` and `count_separator`). Set `icons = { remote = "...", branch = "..." }` on a git segment to override icons. Git `states` support `id = "unstaged"`, `id = "staged"`, `id = "ahead"`, and `id = "behind"` with `fg`/`bg` colors. The segment `bg` is used when no state matches.
 - `meter`: `{value}` = raw numeric meter value, `{percent}` = rounded value, `{context_window}` = human-readable model context window.
+- `usage`: `{input}` = input tokens including cache reads/writes, `{output}` = output tokens, `{cache_read}` / `{cache_write}` = optional cache breakdown, `{cost}` = estimated USD cost with two decimal places. Token counts are abbreviated (`8.2k`, `124k`, `1.2M`).
 - `status`: `{value}` / `{text}` = normalized status text, `{key}` = status key, plus numeric tokens parsed from status text such as `{errors}` or `{warnings}`. MCP statuses also expose `{servers}` for the `connected/total` count.
 - `activity`: `{source}` = `tools` or `streaming`, `{spinner}` = current spinner frame, `{tools}` = comma-separated tool names, `{streaming}` = streaming state, `{value}` = source display value.
 
 `eval`, `collapsed_eval`, and state-level `eval` still work for backwards compatibility. Prefer `template` and `collapsed_template` for new configs.
 
 Status segments can set `ignore = ["regex"]` to skip matching status text. This is useful on `key = "*"` catch-all segments when a known status should not be rendered.
+
+### Token usage
+
+The default usage segment shows `↑124k ↓8.2k $0.43` and collapses to `$0.43`:
+
+```toml
+[[statusbar.segments]]
+type = "usage"
+template = "↑{input} ↓{output} ${cost}"
+fg = "text_fg"
+bg = "usage_bg"
+collapse_order = 3
+collapsed_template = "${cost}"
+```
+
+Totals include recorded assistant, nested tool, compaction, and branch-summary
+usage on the active branch, including history before compaction. Switching branches
+changes the totals; starting a new session resets them. Counts update after usage
+is recorded, not token-by-token during streaming. Missing usage counts as zero.
+Cost uses Pi's recorded pricing estimate, not your actual invoice or subscription
+balance. The context meter remains separate: it measures current context occupancy,
+not cumulative usage.
 
 ### Adaptive / Responsive Collapsing
 

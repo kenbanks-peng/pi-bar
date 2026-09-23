@@ -15,6 +15,24 @@ afterEach(() => {
   config.colors = originalColors;
 });
 
+test('default usage segment shows totals and collapses to cost', () => {
+  const usage = defaults.statusbar.segments.find((segment) => segment.type === 'usage');
+  expect(usage).toBeDefined();
+  config.statusbar.segments = [usage!];
+  config.colors = defaults.colors;
+  const ctx = { sessionManager: { getBranch: () => [{
+    type: 'message', message: { role: 'assistant', usage: {
+      input: 100_000, cacheRead: 24_000, output: 8_200, cost: { total: 0.43 },
+    } },
+  }] } } as unknown as ExtensionContext;
+  const render = (width: number) => buildStatusbarSegments(ctx, {} as ExtensionAPI, {
+    spinnerFrame: 0, displayedTools: [], displayedStreaming: false, statuses: new Map(),
+  }, width).replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '');
+  expect(render(200)).toContain('↑124k ↓8.2k $0.43');
+  expect(render(10)).toContain('$0.43');
+  expect(render(10)).not.toContain('↑');
+});
+
 const cases = [
   ['🔌 MCP: 1 server enabled', '0/1', 'alert'],
   ['🔌 MCP: 1 server enabled (1 connected)', '1/1', 'ok'],
